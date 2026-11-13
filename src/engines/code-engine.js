@@ -384,8 +384,9 @@ export class NexCodeEngine {
   scaffold(request = '') {
     const normalized = String(request).toLowerCase().normalize('NFD')
       .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
-    if (/\b(jogo|game|adivinh|guess)\b/.test(normalized)) return this.scaffoldGuessingGame(request);
-    if (/\b(site|website|pagina|landing page|portfolio|loja|dashboard|frontend|front end|barbearia|barbeiro)\b/.test(normalized)) {
+    if (/\b(jogo|game|guess)\b|adivinh/.test(normalized)) return this.scaffoldGuessingGame(request);
+    if (/\b(barbearia|barbeiro|barbeiros)\b/.test(normalized)) return this.scaffoldBarbershop(request);
+    if (/\b(site|website|pagina|landing page|portfolio|loja|dashboard|frontend|front end)\b/.test(normalized)) {
       return this.scaffoldWebsite(request);
     }
     const language = request.toLowerCase().includes('python') ? 'python' : 'javascript';
