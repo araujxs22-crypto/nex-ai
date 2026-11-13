@@ -2,9 +2,9 @@ const normalize = value => String(value ?? '')
   .trim()
   .toLowerCase()
   .normalize('NFD')
-  .replace(/[\\u0300-\\u036f]/g, '')
+  .replace(/[\u0300-\u036f]/g, '')
   .replace(/[!?.,;:]+/g, ' ')
-  .replace(/\\s+/g, ' ')
+  .replace(/\s+/g, ' ')
   .trim();
 
 const reply = text => ({type: 'chat', text});
