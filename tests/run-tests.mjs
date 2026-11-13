@@ -417,6 +417,27 @@ assert.ok(integratedSite.includes('window.nexCore = core'), 'site expõe a inst�
 assert.ok(integratedSite.includes('window.nexReady'), 'site aguarda a inicialização');
 assert.ok(integratedSite.includes('NEX CORE 0.4.0'), 'site identifica a versão integrada');
 assert.ok(integratedSite.includes('id="nex-core-status"'), 'site exibe estado do Core');
+
+const inlineScripts = [...integratedSite.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+assert.ok(inlineScripts.length >= 2, 'site deve conter scripts inline');
+const inlineCheckDir = mkdtempSync(join(tmpdir(), 'nex-inline-script-check-'));
+try {
+  inlineScripts.forEach((match, index) => {
+    const isModule = /\\btype=["']module["']/i.test(match[1]);
+    const extension = isModule ? 'mjs' : 'js';
+    const filePath = join(inlineCheckDir, 'inline-' + index + '.' + extension);
+    writeFileSync(filePath, match[2], 'utf8');
+    const syntax = spawnSync(process.execPath, ['--check', filePath], {encoding: 'utf8'});
+    assert.equal(
+      syntax.status,
+      0,
+      'script inline ' + index + ' deve ter sintaxe válida: ' + (syntax.stderr || syntax.stdout)
+    );
+  });
+} finally {
+  rmSync(inlineCheckDir, {recursive: true, force: true});
+}
+
 console.log(JSON.stringify({
   ok: true,
   datasetVersion: core.chat.datasetVersion,
