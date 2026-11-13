@@ -1,30 +1,28 @@
-# NEX — Leitor da Sala do Futuro (Chrome)
+# NEX — Agente de Navegador (Chrome)
 
-Extensão Manifest V3 sem Node.js, servidor local, Playwright ou APIs externas.
+Extensão Manifest V3 para interagir com páginas HTTPS na aba ativa, sem Node.js, servidor local ou Playwright.
 
-## Instalação no Chrome
-
-1. Baixe o ZIP do repositório NEX e extraia-o.
-2. Abra `chrome://extensions`.
-3. Ative **Modo do desenvolvedor**.
-4. Clique em **Carregar sem compactação**.
-5. Selecione a pasta `extension/sala-do-futuro` extraída do ZIP.
-6. Fixe a extensão NEX na barra do Chrome pelo menu de extensões.
+## Instalação
+1. Abra `chrome://extensions`.
+2. Ative **Modo do desenvolvedor**.
+3. Clique em **Carregar sem compactação**.
+4. Selecione esta pasta extraída do repositório.
+5. Fixe o NEX na barra do Chrome.
 
 ## Uso
+1. Abra um site HTTPS.
+2. Clique no ícone do NEX.
+3. Use **Ler página** para extrair o texto visível.
+4. Use **Clicar no elemento encontrado** para acionar um botão/link pelo texto visível.
+5. Use **Preencher campo** para preencher um campo identificado por rótulo, nome ou placeholder. O formulário não é enviado.
+6. Para mudar de site, informe um endereço HTTPS e clique em **Abrir endereço**. Depois que carregar, abra novamente a extensão.
 
-1. Abra `https://saladofuturo.educacao.sp.gov.br/` e entre normalmente.
-2. Abra a atividade que deseja estudar.
-3. Clique no ícone da extensão NEX.
-4. Clique em **Ler página atual**.
-5. Clique em **Copiar texto para o NEX**.
-6. Volte à conversa do NEX, cole com `Ctrl+V` e peça uma explicação passo a passo.
+## Segurança e limites
+- Manifest V3 com apenas `activeTab`, `scripting` e `clipboardWrite`.
+- Acesso temporário à aba ativa após você abrir a extensão; não há permissão ampla para todos os sites.
+- Recusa páginas HTTP e endereços com usuário/senha embutidos.
+- Não lê cookies, senhas ou histórico.
+- Não envia formulários, mensagens, compras ou atividades.
+- Cada ação é iniciada por você e deve ser conferida na página.
 
-## Permissões e privacidade
-
-A extensão usa Manifest V3 e pede apenas:
-- `activeTab`: acesso temporário à aba ativa após clicar na extensão.
-- `scripting`: executar uma leitura simples do texto visível na aba ativa.
-- `clipboardWrite`: copiar o texto somente depois que você clicar no botão de cópia.
-
-Não há permissões amplas de todos os sites, cookies, histórico ou armazenamento. A extensão recusa URLs que não sejam HTTPS no host exato `saladofuturo.educacao.sp.gov.br`. Ela não lê campos de senha, não clica em respostas, não preenche campos nem envia/entrega atividades.
+Esta versão é controle manual assistido. Ainda não inclui planejamento autônomo multi-etapas, visão de tela ou conexão OAuth com serviços Google.
