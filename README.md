@@ -10,6 +10,10 @@ Módulo independente, offline e sem APIs pagas para ser integrado a uma aplicaç
 - **NEX Chat:** classifica intenções e coordena vídeo, código e memória. Conversação geral é deliberadamente limitada e local.
 - **Memória:** armazenamento persistente em `localStorage` no navegador, com busca lexical e exportação/importação JSON. Memória não altera os pesos da rede.
 
+## LLM local de conversação (experimental)
+
+A interface integrada inclui um modelo pequeno de linguagem executado no próprio navegador: `HuggingFaceTB/SmolLM2-135M-Instruct`, quantização Q4, via Transformers.js e ONNX Runtime Web. Não usa chave de API, conta de provedor ou endpoint de inferência pago. O download inicial do modelo é de aproximadamente 200 MB; depois o navegador pode reutilizar os arquivos em cache. A conversa e a inferência acontecem localmente na aba. É necessário internet para baixar a biblioteca e o modelo na primeira utilização. O modelo é pequeno e experimental: qualidade em português, velocidade e uso de memória variam, especialmente em PCs com 4 GB de RAM. O Code Engine, Video Engine e a memória local continuam separados.
+
 ## Limitações honestas
 
 Com Intel i3-8100, 4 GB de RAM, Intel UHD 630 e sem instalar programas, é viável treinar modelos pequenos e executar regras/planejamento no Chrome. Não é viável, neste pacote, treinar do zero um modelo generativo de vídeo 3D, um LLM competitivo ou um renderizador 3D completo. Isso exigiria grandes conjuntos de dados, GPU dedicada, armazenamento e um pipeline de renderização/treino substancial.
@@ -61,7 +65,7 @@ src/neural/tiny-mlp.js       rede neural e vetorizador
 src/engines/video-engine.js  planejamento 3D/vídeo
 src/engines/code-engine.js   análise estrutural, diagnósticos e scaffold de programação
 src/memory/memory.js         memória local
-src/chat-engine.js           classificação e coordenação
+src/local-llm.js             inferência de chat local no navegador\nsrc/chat-engine.js           classificação e coordenação
 src/nex-core.js              fachada pública
 data/training-data.js        exemplos iniciais
 tests/run-tests.mjs          testes obrigatórios
