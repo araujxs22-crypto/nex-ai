@@ -112,7 +112,7 @@ try {
     cwd: barberScaffoldDir,
     encoding: 'utf8'
   });
-  assert.match(barberTestOutput, /# pass 2/, 'os testes do site de barbearia devem passar');
+  assert.match(barberTestOutput, /pass\s+2/, 'os testes do site de barbearia devem passar');
 } finally {
   rmSync(barberScaffoldDir, {recursive: true, force: true});
 }
@@ -133,7 +133,7 @@ try {
     cwd: gameScaffoldDir,
     encoding: 'utf8'
   });
-  assert.match(gameTestOutput, /# pass 6/, 'os testes do jogo de adivinhação devem passar');
+  assert.match(gameTestOutput, /pass\s+6/, 'os testes do jogo de adivinhação devem passar');
 } finally {
   rmSync(gameScaffoldDir, {recursive: true, force: true});
 }
@@ -166,7 +166,7 @@ try {
     cwd: jsScaffoldDir,
     encoding: 'utf8'
   });
-  assert.match(jsTestOutput, /# pass 1/, 'o teste do scaffold JavaScript deve executar e passar');
+  assert.match(jsTestOutput, /pass\s+1/, 'o teste do scaffold JavaScript deve executar e passar');
 } finally {
   rmSync(jsScaffoldDir, {recursive: true, force: true});
 }
@@ -368,7 +368,7 @@ assert.deepEqual(negatedForestPlan.scene.objects.map(object => object.type), ['t
 const exactWordPlan = core.video.plan('Crie uma cena de casamento com uma árvore');
 assert.deepEqual(exactWordPlan.scene.objects.map(object => object.type), ['tree'], 'casamento não deve ser confundido com casa');
 const explicitHousePlan = core.video.plan('Crie uma casa com uma árvore');
-assert.deepEqual(explicitHousePlan.scene.objects.map(object => object.type), ['house','tree'], 'uma casa explicitamente solicitada deve continuar sendo reconhecida');
+assert.deepEqual(explicitHousePlan.scene.objects.map(object => object.type), ['house','tree'], 'a ordem dos objetos deve seguir a ordem do pedido');
 
 const video = core.ask('crie uma cena 3d com uma nave');
 assert.equal(video.type, 'video-plan', 'um comando de vídeo claro deve gerar um plano de vídeo');
