@@ -20,8 +20,7 @@ export async function loadLocalLLM(onProgress = () => {}) {
       env.allowLocalModels = false;
       onProgress({status: 'downloading-model', message: 'Baixando o modelo local (aprox. 200 MB na primeira vez)…'});
       const instance = await pipeline('text-generation', LOCAL_MODEL.id, {
-        dtype: LOCAL_MODEL.quantization
-      }, {
+        dtype: LOCAL_MODEL.quantization,
         progress_callback: (event) => onProgress({
           status: event.status || 'downloading-model',
           file: event.file,
