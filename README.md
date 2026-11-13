@@ -75,3 +75,8 @@ demo/index.html              demonstração offline
 3. Integrar Three.js apenas como renderizador separado do planejador, caso a interface já possa carregar um arquivo local.
 4. Evoluir a análise estrutural leve para parsers AST completos por linguagem, mantendo diagnósticos com localização e testes de regressão.
 5. Em hardware melhor, criar um serviço local opcional para modelos maiores e treinamento controlado. O contrato JSON dos engines pode permanecer igual.
+
+
+## Aplicação integrada
+
+`index.html` é a entrada do site e preserva a interface existente. Importa `src/index.js`, inicializa o NEX Core 0.3.0, treina e calibra o modelo na primeira abertura e persiste os pesos em `localStorage`. Pedidos de programação usam o Code Engine; pedidos de cena usam o Video Engine. O Core não executa código arbitrário nem grava arquivos diretamente no computador. Para publicar com GitHub Pages, configure a publicação pela raiz da branch que contém `index.html`.
