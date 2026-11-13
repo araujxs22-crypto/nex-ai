@@ -49,7 +49,7 @@ export function respondToSocialMessage(input) {
     return reply('Sou o NEX. Meu núcleo atual identifica tarefas, ajuda com análise de código, planeja cenas 3D e organiza memórias. Ainda não sou um LLM generativo de conhecimento geral.');
   }
 
-  if (/^(explique tudo que pode fazer|explique tudo oq pode fazer|o que voce consegue fazer|quais sao suas capacidades|me diga suas funcoes)$/.test(text)) {
+  if (/^(explique tudo que pode fazer|explique tudo oq pode fazer|o que voce consegue fazer|oque voce pode fazer|o que voce pode fazer|oque vc pode fazer|o que vc pode fazer|quais sao suas capacidades|me diga suas funcoes)$/.test(text)) {
     return reply('Posso ajudar com programação: analisar trechos de código, identificar alguns erros e estruturar projetos. Também posso transformar ideias em planos de cenas e vídeos 3D, além de guardar e recuperar memórias. Minha conversa geral ainda é limitada e posso não entender pedidos fora dessas áreas.');
   }
 
