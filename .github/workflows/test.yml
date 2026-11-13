@@ -26,3 +26,5 @@ jobs:
           node-version: 20
       - name: Run tests
         run: npm test
+      - name: Tune bigram feature weight on validation split
+        run: node tests/tune-bigram-weight.mjs
