@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {NexCore, TinyMLP} from '../src/index.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
-import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES} from '../data/training-data.js';
+import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
 
 const core = new NexCore();
 const before = JSON.stringify(core.chat.model.toJSON());
@@ -12,6 +12,16 @@ const after = JSON.stringify(core.chat.model.toJSON());
 assert.notEqual(before, after, 'pesos devem mudar');
 assert.ok(history.length <= 500, 'early stopping deve ser permitido');
 assert.ok(history.at(-1).validation, 'validação deve ser medida');
+
+const weightsBeforeCalibration = JSON.stringify(core.chat.model.toJSON());
+const calibration = core.calibrate({minKnownCoverage: 0.75});
+assert.ok(calibration.metrics.knownCoverage >= 0.75, 'calibração deve respeitar cobertura mínima');
+assert.ok(calibration.metrics.candidatesEvaluated > 0, 'deve avaliar combinações de limites');
+assert.equal(
+  JSON.stringify(core.chat.model.toJSON()),
+  weightsBeforeCalibration,
+  'calibrar limites não pode alterar pesos neurais'
+);
 
 const evalResult = core.evaluate();
 const knownMetrics = classificationMetrics(evalResult.predictions, core.chat.labels);
@@ -34,6 +44,7 @@ for (const [name, examples, expectedPerClass] of [
   }
 }
 assert.equal(UNKNOWN_EXAMPLES.length, 10, 'deve haver dez sondagens OOD independentes');
+assert.equal(UNKNOWN_CALIBRATION_EXAMPLES.length, 8, 'deve haver oito exemplos OOD separados para calibracao');
 assert.ok(Number.isFinite(knownMetrics.macro.f1));
 assert.ok(rejection.unknownRejected >= 0 && rejection.unknownRejected <= 1);
 
@@ -51,7 +62,8 @@ const leakage = leakageReport({
   train: TRAIN_EXAMPLES,
   validation: VALIDATION_EXAMPLES,
   test: TEST_EXAMPLES,
-  outOfDomain: UNKNOWN_EXAMPLES.map(text => ({label: 'unknown', text}))
+  outOfDomain: UNKNOWN_EXAMPLES.map(text => ({label: 'unknown', text})),
+  outOfDomainCalibration: UNKNOWN_CALIBRATION_EXAMPLES.map(text => ({label: 'unknown', text}))
 });
 assert.equal(leakage.duplicateCount, 0, 'não pode haver duplicatas entre splits');
 assert.equal(leakage.similarPairCount, 0, 'não pode haver pares quase duplicados entre splits');
@@ -152,7 +164,8 @@ console.log(JSON.stringify({
     train: TRAIN_EXAMPLES.length,
     validation: VALIDATION_EXAMPLES.length,
     test: TEST_EXAMPLES.length,
-    outOfDomain: UNKNOWN_EXAMPLES.length
+    outOfDomain: UNKNOWN_EXAMPLES.length,
+    outOfDomainCalibration: UNKNOWN_CALIBRATION_EXAMPLES.length
   },
   epochs: history.length,
   initialLoss: history[0].loss,
@@ -164,13 +177,16 @@ console.log(JSON.stringify({
   confusionMatrix: knownMetrics.confusionMatrix,
   knownRejected: rejection.knownRejected,
   outOfDomainRejected: rejection.unknownRejected,
+  calibration,
   leakage,
   evaluationTests: [
     'balanced train, validation and test splits',
     'unknown predictions included in confusion matrix',
     'macro averages calculated over supported classes',
     'independent out-of-domain examples',
-    'explicit video command routed to video-plan'
+    'explicit video command routed to video-plan',
+    'rejection thresholds calibrated on validation plus separate OOD set',
+    'calibration leaves neural weights unchanged'
   ],
   persistenceTests: [
     'round-trip de pesos',
