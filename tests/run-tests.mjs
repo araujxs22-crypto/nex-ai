@@ -10,7 +10,16 @@ import {buildProjectPreview} from '../src/engines/project-preview.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
+import {isSalaDoFuturoUrl, isTrustedNexOrigin} from '../browser-agent/policy.js';
 
+
+assert.equal(isSalaDoFuturoUrl('https://saladofuturo.educacao.sp.gov.br/login-alunos'), true);
+assert.equal(isSalaDoFuturoUrl('http://saladofuturo.educacao.sp.gov.br/'), false);
+assert.equal(isSalaDoFuturoUrl('https://saladofuturo.educacao.sp.gov.br.evil.example/'), false);
+assert.equal(isSalaDoFuturoUrl('https://example.com/'), false);
+assert.equal(isTrustedNexOrigin('https://nex-ai-preview.vercel.app'), true);
+assert.equal(isTrustedNexOrigin('https://nex-ai-preview-git-feat-playwright-sala-do-futuro-araujxs22-8685.vercel.app'), true);
+assert.equal(isTrustedNexOrigin('https://evil-preview.vercel.app'), false);
 
 const codeEngine = new NexCodeEngine();
 

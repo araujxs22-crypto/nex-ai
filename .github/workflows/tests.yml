@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feat/nex-project-generation-preview
+      - feat/playwright-sala-do-futuro
   pull_request:
     branches:
       - feature/natural-dialogue-core
+      - feat/nex-project-generation-preview
 
 permissions:
   contents: read
@@ -21,3 +23,5 @@ jobs:
         run: node --version && npm --version
       - name: Run regression suite
         run: npm test
+      - name: Check local browser agent syntax
+        run: npm run check --prefix browser-agent
