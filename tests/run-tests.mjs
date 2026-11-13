@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join, dirname} from 'node:path';
+import {execFileSync} from 'node:child_process';
 import {NexCore, TinyMLP} from '../src/index.js';
 import {NexCodeEngine} from '../src/engines/code-engine.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
@@ -63,9 +67,43 @@ assert.ok(jsScaffold.files.includes('package.json'));
 assert.ok(jsScaffold.fileContents['tests/main.test.js']);
 assert.equal(jsScaffold.testCommand, 'node --test');
 
+// Executa o projeto de exemplo gerado pelo NEX em um diretório temporário.
+const jsScaffoldDir = mkdtempSync(join(tmpdir(), 'nex-js-scaffold-'));
+try {
+  for (const [filePath, content] of Object.entries(jsScaffold.fileContents)) {
+    const absolutePath = join(jsScaffoldDir, filePath);
+    mkdirSync(dirname(absolutePath), {recursive: true});
+    writeFileSync(absolutePath, content, 'utf8');
+  }
+  const jsTestOutput = execFileSync(process.execPath, ['--test'], {
+    cwd: jsScaffoldDir,
+    encoding: 'utf8'
+  });
+  assert.match(jsTestOutput, /# pass 1/, 'o teste do scaffold JavaScript deve executar e passar');
+} finally {
+  rmSync(jsScaffoldDir, {recursive: true, force: true});
+}
+
 const pyScaffold = codeEngine.scaffold('crie um projeto Python');
 assert.ok(pyScaffold.files.includes('tests/test_main.py'));
-assert.equal(pyScaffold.testCommand, 'python -m unittest discover');
+assert.equal(pyScaffold.testCommand, 'python -m unittest discover -s tests');
+
+// O CI Ubuntu executa também o scaffold Python completo.
+const pyScaffoldDir = mkdtempSync(join(tmpdir(), 'nex-py-scaffold-'));
+try {
+  for (const [filePath, content] of Object.entries(pyScaffold.fileContents)) {
+    const absolutePath = join(pyScaffoldDir, filePath);
+    mkdirSync(dirname(absolutePath), {recursive: true});
+    writeFileSync(absolutePath, content, 'utf8');
+  }
+  const pyTestOutput = execFileSync('python3', ['-m', 'unittest', 'discover', '-s', 'tests'], {
+    cwd: pyScaffoldDir,
+    encoding: 'utf8'
+  });
+  assert.match(pyTestOutput, /OK/, 'o teste do scaffold Python deve executar e passar');
+} finally {
+  rmSync(pyScaffoldDir, {recursive: true, force: true});
+}
 
 assert.equal(codeEngine.testPlan('javascript').executionSupported, false);
 assert.throws(() => codeEngine.analyze('x', 'ruby'), /Linguagem não suportada/);
