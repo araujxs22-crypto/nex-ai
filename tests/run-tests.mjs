@@ -230,6 +230,18 @@ const identity = core.ask('quem é você?');
 assert.equal(identity.type, 'chat');
 assert.match(identity.text, /Sou o NEX/);
 
+const programmingTopic = core.ask('programação');
+assert.equal(programmingTopic.type, 'chat');
+assert.match(programmingTopic.text, /Posso ajudar com programação/);
+
+const misspelledProgrammingTopic = core.ask('ptogamaçao');
+assert.equal(misspelledProgrammingTopic.type, 'chat');
+assert.match(misspelledProgrammingTopic.text, /Posso ajudar com programação/);
+
+const programmingRequest = core.ask('quero programar um aplicativo em JavaScript');
+assert.equal(programmingRequest.type, 'code');
+assert.equal(programmingRequest.result.type, 'scaffold');
+
 const capabilities = core.ask('explique tudo oq pode fazer');
 assert.equal(capabilities.type, 'chat');
 assert.match(capabilities.text, /programação/);
