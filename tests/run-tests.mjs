@@ -17,6 +17,13 @@ assert.notDeepEqual(
   vectorizer.encode('pousando nave'),
   'bigramas devem distinguir a ordem das palavras'
 );
+const naveIndex = vectorizer.vocab.indexOf('u:nave');
+const pousandoIndex = vectorizer.vocab.indexOf('u:pousando');
+const navePousandoIndex = vectorizer.vocab.indexOf('b:nave_pousando');
+const weightedVector = vectorizer.encode('nave pousando');
+assert.equal(weightedVector[naveIndex], 0.5, 'unigramas devem manter a escala normalizada anterior');
+assert.equal(weightedVector[pousandoIndex], 0.5, 'unigramas devem manter a escala normalizada anterior');
+assert.equal(weightedVector[navePousandoIndex], 0.25, 'bigramas devem ter peso menor que unigramas');
 assert.equal(
   vectorizer.recognizedRatio('nave palavra_desconhecida'),
   0.5,
