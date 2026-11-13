@@ -3,6 +3,7 @@ import {mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync} from 'node:
 import {tmpdir} from 'node:os';
 import {join, dirname} from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
+import {runInNewContext} from 'node:vm';
 import {NexCore, TinyMLP, NexMemory} from '../src/index.js';
 import {NexCodeEngine} from '../src/engines/code-engine.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
@@ -417,6 +418,86 @@ assert.ok(integratedSite.includes('window.nexCore = core'), 'site expõe a inst�
 assert.ok(integratedSite.includes('window.nexReady'), 'site aguarda a inicialização');
 assert.ok(integratedSite.includes('NEX CORE 0.4.0'), 'site identifica a versão integrada');
 assert.ok(integratedSite.includes('id="nex-core-status"'), 'site exibe estado do Core');
+
+
+const voiceControlStart = integratedSite.indexOf('function voiceErrorMessage(');
+const voiceControlEnd = integratedSite.indexOf('\nfunction toggleVoiceOutput()', voiceControlStart);
+assert.ok(voiceControlStart >= 0 && voiceControlEnd > voiceControlStart, 'o site deve conter os controles de reconhecimento de voz');
+const voiceControlSource = integratedSite.slice(voiceControlStart, voiceControlEnd);
+const voiceButtonClasses = new Set();
+const voiceInput = {value: '', style: {}, scrollHeight: 58};
+const voiceToasts = [];
+const speechInstances = [];
+let fakeStartError = null;
+class FakeSpeechRecognition {
+  constructor() { speechInstances.push(this); }
+  start() {
+    if (fakeStartError) throw fakeStartError;
+    this.started = true;
+    this.onstart?.();
+  }
+  stop() { this.stopped = true; }
+}
+const voiceSandbox = {
+  window: {SpeechRecognition: FakeSpeechRecognition},
+  speechRecognition: null,
+  speechRecognitionStopRequested: false,
+  $: id => id === 'msg' ? voiceInput : ({
+    classList: {
+      add: name => voiceButtonClasses.add(name),
+      remove: name => voiceButtonClasses.delete(name)
+    }
+  }),
+  toast: message => voiceToasts.push(String(message))
+};
+runInNewContext(
+  voiceControlSource + '\nglobalThis.testToggleVoiceInput=toggleVoiceInput;globalThis.testVoiceErrorMessage=voiceErrorMessage;',
+  voiceSandbox
+);
+
+voiceInput.value = 'texto anterior';
+voiceSandbox.testToggleVoiceInput();
+const successfulRecognition = speechInstances.at(-1);
+assert.equal(successfulRecognition.started, true, 'deve iniciar o reconhecimento');
+assert.ok(voiceButtonClasses.has('listening'), 'deve indicar visualmente que está ouvindo');
+successfulRecognition.onresult({
+  results: [[{transcript: 'olá'}], [{transcript: 'mundo'}]]
+});
+assert.equal(voiceInput.value, 'texto anterior olá mundo', 'deve preservar o texto anterior e juntar todos os resultados');
+assert.equal(voiceInput.style.height, '58px', 'deve redimensionar o campo com o texto reconhecido');
+successfulRecognition.onend();
+assert.equal(voiceSandbox.speechRecognition, null, 'deve limpar a sessão ao terminar');
+assert.ok(!voiceButtonClasses.has('listening'), 'deve remover o estado visual ao terminar');
+
+voiceInput.value = '';
+voiceSandbox.testToggleVoiceInput();
+const noSpeechRecognition = speechInstances.at(-1);
+noSpeechRecognition.onerror({error: 'no-speech'});
+assert.match(voiceToasts.at(-1), /Não detectei fala/, 'no-speech deve explicar que nenhuma fala foi detectada, sem culpar o microfone');
+noSpeechRecognition.onend();
+assert.equal(voiceToasts.filter(message => /Não detectei fala/.test(message)).length, 1, 'não deve mostrar erros duplicados ao encerrar');
+
+voiceSandbox.testToggleVoiceInput();
+const manuallyStoppedRecognition = speechInstances.at(-1);
+voiceSandbox.testToggleVoiceInput();
+assert.equal(manuallyStoppedRecognition.stopped, true, 'o segundo clique deve parar a sessão ativa');
+manuallyStoppedRecognition.onend();
+assert.equal(voiceSandbox.speechRecognition, null, 'o encerramento manual deve limpar a sessão');
+
+voiceSandbox.window.SpeechRecognition = undefined;
+voiceSandbox.window.webkitSpeechRecognition = undefined;
+voiceSandbox.testToggleVoiceInput();
+assert.match(voiceToasts.at(-1), /não oferece reconhecimento/, 'deve avisar quando a API não existe');
+
+assert.match(voiceSandbox.testVoiceErrorMessage('not-allowed'), /permissão/, 'deve explicar bloqueio de permissão');
+assert.match(voiceSandbox.testVoiceErrorMessage('network'), /internet/, 'deve explicar falha de rede');
+
+voiceSandbox.window.SpeechRecognition = FakeSpeechRecognition;
+fakeStartError = new Error('start bloqueado');
+voiceSandbox.testToggleVoiceInput();
+assert.equal(voiceSandbox.speechRecognition, null, 'uma falha síncrona ao iniciar não pode deixar a sessão presa');
+assert.ok(!voiceButtonClasses.has('listening'), 'uma falha ao iniciar deve limpar o estado visual');
+fakeStartError = null;
 
 const inlineScripts = [...integratedSite.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
 assert.ok(inlineScripts.length >= 2, 'site deve conter scripts inline');

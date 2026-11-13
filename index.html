@@ -60,7 +60,7 @@ window.nexThreeReady = import('https://cdn.jsdelivr.net/npm/three@0.187.0/build/
 <script>
 'use strict';
 const DB_NAME='NexAILocalDB_v2', DB_VERSION=2;
-let db=null, currentSessionId=newSessionId(), currentMessages=[], lastResearchResults=[], speechRecognition=null, voiceOutputEnabled=false, threeLoadRequested=false, sceneAnimationStart=0;
+let db=null, currentSessionId=newSessionId(), currentMessages=[], lastResearchResults=[], speechRecognition=null, speechRecognitionStopRequested=false, voiceOutputEnabled=false, threeLoadRequested=false, sceneAnimationStart=0;
 const $=id=>document.getElementById(id);
 function newSessionId(){return 'nex_'+Date.now()+'_'+Math.random().toString(36).slice(2,9)}
 function toast(text){const el=$('toast');el.textContent=text;el.classList.add('show');clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.classList.remove('show'),2300)}
@@ -85,27 +85,87 @@ async function retrieveKnowledge(question){if(!db)return[];const items=await req
 function localResponse(question,hits){const n=normalizeText(question);if(hits.length){return 'Encontrei estes materiais na memória do NEX:\n\n'+hits.map((h,i)=>`${i+1}. ${h.item.title}\n${snippetFor(h.item.content,tokenize(question))}\nFonte: ${h.item.url||'material local'}`).join('\n\n')+'\n\nEsta resposta foi montada a partir dos trechos recuperados. Ainda não existe um modelo neural de linguagem por trás do NEX; a recuperação atual usa correspondência de palavras-chave.'}if(/^(oi|ola|eai|bom dia|boa tarde|boa noite)\b/.test(n))return'Olá! Sou o NEX, em minha primeira versão local. Posso pesquisar artigos, guardar materiais na memória, recuperar conhecimentos e montar cenas 3D básicas. Ainda estou aprendendo a conversar: meu mecanismo atual usa regras simples e memória pesquisável.';if(n.includes('quem e voce'))return'Sou o NEX. Meu núcleo atual é uma aplicação local no navegador, com memória persistente, pesquisa de artigos e ferramentas 3D básicas. Ainda não sou um modelo neural treinado de forma independente.';if(n.includes('aprender')||n.includes('pesquisar'))return'Para pesquisar, escreva “pesquisar: assunto”. O NEX procura artigos na Wikipédia e apresenta cartões para você estudar e guardar cada resultado.';if(n.includes('3d')||n.includes('animacao')||n.includes('video'))return'Acesse o NEX Studio 3D pela barra lateral. Nesta versão você pode adicionar cubos e esferas, girar a câmera e criar uma cena simples a partir de palavras como floresta, cidade, quarto ou robô.';if(n.includes('memoria')||n.includes('biblioteca'))return'A memória é guardada no IndexedDB deste navegador. Abra Biblioteca para buscar e excluir materiais. Isso é recuperação de informações, não treinamento dos pesos de uma rede neural.';return'Não encontrei conhecimento suficiente na memória para responder com segurança. Pesquise o assunto usando “pesquisar: '+question+'” e salve os materiais relevantes. Depois poderei recuperar trechos associados à sua pergunta. Meu sistema de conversa ainda é básico e não inventa uma resposta quando não tem dados.'}
 async function sendMsg(){const input=$('msg');const text=input.value.trim();if(!text)return;input.value='';input.style.height='32px';switchTab('chat');appendMessage(text,'user');currentMessages.push({user:text,nex:''});const norm=text.toLowerCase();if(norm.startsWith('pesquisar:')||norm.startsWith('pesquisa ')){const q=text.replace(/^(pesquisar:|pesquisa)\s*/i,'').trim();appendMessage('Pesquisando artigos sobre “'+q+'”…','nex','PESQUISA');await performDeepResearch(q,text);return}let answer;try{await window.nexReady;const fenced=text.includes(String.fromCharCode(96).repeat(3));const codeLike=['const ','let ','function ','def ','class ','console.','<html','=>'].some(x=>text.includes(x));const response=fenced?{type:'code',result:window.nexCore.code.process(text)}:window.nexCore.ask(text);answer=window.formatNexResponse(response);if(response.type==='video-plan'){$('scene-prompt').value=text;window.nexLastVideoPlan=response.result;}}catch(e){answer='Erro no NEX Core: '+e.message}appendMessage(answer,'nex','NEX CORE 0.4.0');speakReply(answer);await saveConversation(text,answer);currentMessages[currentMessages.length-1].nex=answer}
 
+function voiceErrorMessage(code){
+  switch(String(code||'')){
+    case 'no-speech': return 'Não detectei fala. Fale logo após “Ouvindo…” e confira se o microfone correto está selecionado no Windows.';
+    case 'audio-capture': return 'O navegador não encontrou um microfone disponível. Verifique o dispositivo de entrada do Windows.';
+    case 'not-allowed': return 'A permissão do microfone foi bloqueada. Libere o microfone para este site nas configurações do Chrome.';
+    case 'service-not-allowed': return 'O serviço de reconhecimento de voz foi bloqueado pelo navegador. Confira as permissões do Chrome.';
+    case 'network': return 'O reconhecimento de voz não conseguiu acessar o serviço. Verifique a conexão com a internet e tente novamente.';
+    case 'language-not-supported': return 'O reconhecimento de voz não oferece suporte a português do Brasil neste navegador.';
+    case 'aborted': return 'O reconhecimento foi interrompido. Tente novamente.';
+    default: return 'O reconhecimento de voz falhou ('+String(code||'desconhecido')+'). Tente novamente.';
+  }
+}
 function toggleVoiceInput(){
   const SpeechAPI=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SpeechAPI){toast('Este navegador não oferece reconhecimento de voz. Use o Chrome ou digite a mensagem.');return}
-  if(speechRecognition){try{speechRecognition.stop()}catch{}speechRecognition=null;return}
-  const recognition=new SpeechAPI();
+  if(!SpeechAPI){toast('Este navegador não oferece reconhecimento de voz. Use uma versão atual do Chrome ou digite a mensagem.');return}
+  if(speechRecognition){
+    speechRecognitionStopRequested=true;
+    try{speechRecognition.stop();toast('Parando o reconhecimento…')}
+    catch(error){
+      speechRecognition=null;
+      speechRecognitionStopRequested=false;
+      $('voice-input')?.classList.remove('listening');
+      toast('Não consegui encerrar o reconhecimento: '+(error?.message||'erro desconhecido'));
+    }
+    return;
+  }
+  let recognition;
+  try{recognition=new SpeechAPI()}
+  catch(error){toast('Não foi possível preparar o reconhecimento: '+(error?.message||'erro desconhecido'));return}
+  const input=$('msg');
+  if(!input){toast('Campo de mensagem indisponível.');return}
+  const base=input.value.trim();
+  let hasResult=false,hadError=false;
+  speechRecognitionStopRequested=false;
   speechRecognition=recognition;
   recognition.lang='pt-BR';
   recognition.continuous=false;
   recognition.interimResults=true;
-  const input=$('msg'),base=input.value.trim();
-  recognition.onstart=()=>{$('voice-input')?.classList.add('listening');toast('Ouvindo…')};
+  recognition.maxAlternatives=1;
+  recognition.onstart=()=>{
+    if(speechRecognition===recognition)$('voice-input')?.classList.add('listening');
+    toast('Ouvindo… fale agora');
+  };
   recognition.onresult=e=>{
-    let transcript='';
-    for(let i=e.resultIndex;i<e.results.length;i++)transcript+=e.results[i][0].transcript;
+    const transcript=Array.from(e?.results||[])
+      .map(result=>result?.[0]?.transcript||'')
+      .join(' ')
+      .replace(/\s+/g,' ')
+      .trim();
+    if(!transcript)return;
+    hasResult=true;
     input.value=[base,transcript].filter(Boolean).join(base?' ':'');
     input.style.height='32px';
     input.style.height=Math.min(input.scrollHeight,120)+'px';
   };
-  recognition.onerror=e=>toast('Falha no microfone: '+(e.error||'erro desconhecido'));
-  recognition.onend=()=>{$('voice-input')?.classList.remove('listening');if(speechRecognition===recognition)speechRecognition=null};
-  try{recognition.start()}catch(error){speechRecognition=null;toast('Não foi possível iniciar o microfone: '+error.message)}
+  recognition.onnomatch=()=>{
+    hadError=true;
+    toast('Recebi áudio, mas não consegui entender a fala. Tente falar mais perto e repetir.');
+  };
+  recognition.onerror=e=>{
+    const code=e?.error||'unknown';
+    if(code==='aborted'&&speechRecognitionStopRequested)return;
+    hadError=true;
+    toast(voiceErrorMessage(code));
+  };
+  recognition.onend=()=>{
+    if(speechRecognition!==recognition)return;
+    speechRecognition=null;
+    $('voice-input')?.classList.remove('listening');
+    if(!speechRecognitionStopRequested&&!hadError&&!hasResult){
+      toast('O reconhecimento terminou sem texto. Fale logo após “Ouvindo…” e tente novamente.');
+    }
+    speechRecognitionStopRequested=false;
+  };
+  try{recognition.start()}
+  catch(error){
+    if(speechRecognition===recognition)speechRecognition=null;
+    speechRecognitionStopRequested=false;
+    $('voice-input')?.classList.remove('listening');
+    toast('Não foi possível iniciar o reconhecimento: '+(error?.message||'erro desconhecido'));
+  }
 }
 function toggleVoiceOutput(){
   voiceOutputEnabled=!voiceOutputEnabled;
