@@ -1,4 +1,4 @@
-# NEX Core 0.1.0
+# NEX Core 0.3.0
 
 Módulo independente, offline e sem APIs pagas para ser integrado a uma aplicação HTML/JavaScript existente. Ele não altera nem recria a interface do NEX AI.
 
@@ -6,7 +6,7 @@ Módulo independente, offline e sem APIs pagas para ser integrado a uma aplicaç
 
 - **Rede neural própria:** MLP pequena em JavaScript puro, com camada oculta `tanh`, saída `softmax`, entropia cruzada, backpropagation, atualização de pesos, métricas e serialização.
 - **NEX Video Engine:** transforma uma descrição em um plano JSON de cena, objetos, câmera, iluminação e timeline. É um planejador, não um renderizador ou gerador de vídeo.
-- **NEX Code Engine:** detecção simples de linguagem, análise estática heurística e scaffold de arquivos. Não substitui compilador, testes ou um modelo de programação avançado.
+- **NEX Code Engine 0.3.0:** análise estrutural leve para JavaScript, Python e HTML; diagnósticos com severidade, linha, coluna e sugestão; detecção de delimitadores/string sem fechamento, atribuições incompletas, cabeçalhos Python sem dois-pontos, tags HTML incompatíveis e ids duplicados; scaffolds JavaScript/Python com arquivos de teste e comandos sugeridos; os projetos gerados são executados em diretórios temporários no CI para validar os testes incluídos.
 - **NEX Chat:** classifica intenções e coordena vídeo, código e memória. Conversação geral é deliberadamente limitada e local.
 - **Memória:** armazenamento persistente em `localStorage` no navegador, com busca lexical e exportação/importação JSON. Memória não altera os pesos da rede.
 
@@ -59,7 +59,7 @@ Para persistir pesos em uma versão posterior, o objeto serializável está disp
 ```text
 src/neural/tiny-mlp.js       rede neural e vetorizador
 src/engines/video-engine.js  planejamento 3D/vídeo
-src/engines/code-engine.js   análise e scaffold de programação
+src/engines/code-engine.js   análise estrutural, diagnósticos e scaffold de programação
 src/memory/memory.js         memória local
 src/chat-engine.js           classificação e coordenação
 src/nex-core.js              fachada pública
@@ -73,5 +73,5 @@ demo/index.html              demonstração offline
 1. Adicionar dados de treino próprios, separados em treino/validação/teste, e versioná-los.
 2. Trocar o classificador de intenção por um modelo de embeddings local pequeno quando houver um runtime offline apropriado.
 3. Integrar Three.js apenas como renderizador separado do planejador, caso a interface já possa carregar um arquivo local.
-4. Adicionar parser/AST real para cada linguagem suportada.
+4. Evoluir a análise estrutural leve para parsers AST completos por linguagem, mantendo diagnósticos com localização e testes de regressão.
 5. Em hardware melhor, criar um serviço local opcional para modelos maiores e treinamento controlado. O contrato JSON dos engines pode permanecer igual.

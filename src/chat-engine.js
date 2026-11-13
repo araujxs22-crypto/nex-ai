@@ -150,7 +150,7 @@ export class NexChatEngine {
       return {
         type: 'code',
         classification,
-        result: this.code.scaffold(text)
+        result: this.code.process(text)
       };
     }
 

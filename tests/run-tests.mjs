@@ -1,8 +1,117 @@
 import assert from 'node:assert/strict';
+import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join, dirname} from 'node:path';
+import {execFileSync, spawnSync} from 'node:child_process';
 import {NexCore, TinyMLP} from '../src/index.js';
+import {NexCodeEngine} from '../src/engines/code-engine.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
+
+
+const codeEngine = new NexCodeEngine();
+
+const validJs = codeEngine.analyze(
+  'const total = 3;\nif (total === 3) {\n  console.log("ok");\n}',
+  'javascript'
+);
+assert.equal(validJs.valid, true, 'JavaScript estruturalmente balanceado deve passar');
+assert.equal(validJs.language, 'javascript');
+assert.ok(validJs.diagnostics.some(item => item.code === 'JS_CONSOLE_LOG'));
+
+const invalidJs = codeEngine.analyze(
+  'function greet( {\n  const name;\n  const value = ;\n  eval("alert(1)");\n}',
+  'javascript'
+);
+assert.equal(invalidJs.valid, false, 'JavaScript com delimitadores e atribuições inválidas deve falhar');
+assert.ok(invalidJs.diagnostics.some(item => item.code === 'UNCLOSED_DELIMITER'));
+
+const mismatchedJs = codeEngine.analyze('const items = [1, 2);', 'javascript');
+assert.ok(mismatchedJs.diagnostics.some(item => item.code === 'MISMATCHED_DELIMITER'));
+assert.ok(invalidJs.diagnostics.some(item => item.code === 'JS_CONST_WITHOUT_INITIALIZER'));
+assert.ok(invalidJs.diagnostics.some(item => item.code === 'JS_EMPTY_ASSIGNMENT'));
+assert.ok(invalidJs.diagnostics.some(item => item.code === 'JS_EVAL_USAGE'));
+assert.ok(invalidJs.diagnostics.every(item => Number.isInteger(item.line) && Number.isInteger(item.column)));
+
+const unterminatedString = codeEngine.analyze('const message = "hello;', 'javascript');
+assert.ok(unterminatedString.diagnostics.some(item => item.code === 'JS_UNTERMINATED_STRING'));
+
+const pythonResult = codeEngine.analyze(
+  'def greet(name)\n    value =\n    return name',
+  'python'
+);
+assert.equal(pythonResult.valid, false);
+assert.ok(pythonResult.diagnostics.some(item => item.code === 'PY_MISSING_COLON'));
+assert.ok(pythonResult.diagnostics.some(item => item.code === 'PY_EMPTY_ASSIGNMENT'));
+
+const htmlResult = codeEngine.analyze(
+  '<div id="app"><span></div><p id="app">x</p>',
+  'html'
+);
+assert.equal(htmlResult.valid, false);
+assert.ok(htmlResult.diagnostics.some(item => item.code === 'HTML_MISMATCHED_TAG'));
+assert.ok(htmlResult.diagnostics.some(item => item.code === 'HTML_DUPLICATE_ID'));
+
+assert.equal(codeEngine.detectLanguage('def main():\n    return 1'), 'python');
+assert.equal(codeEngine.detectLanguage('<html><body></body></html>'), 'html');
+assert.equal(codeEngine.detectLanguage('const x = 1;'), 'javascript');
+
+const fence = String.fromCharCode(96).repeat(3);
+const fencedRequest = codeEngine.process('Analise este trecho:\n' + fence + 'javascript\nconst count;\n' + fence);
+assert.equal(fencedRequest.type, 'analysis');
+assert.ok(fencedRequest.result.diagnostics.some(item => item.code === 'JS_CONST_WITHOUT_INITIALIZER'));
+
+const jsScaffold = codeEngine.scaffold('crie um projeto JavaScript');
+assert.ok(jsScaffold.files.includes('package.json'));
+assert.ok(jsScaffold.fileContents['tests/main.test.js']);
+assert.equal(jsScaffold.testCommand, 'node --test');
+
+// Executa o projeto de exemplo gerado pelo NEX em um diretório temporário.
+const jsScaffoldDir = mkdtempSync(join(tmpdir(), 'nex-js-scaffold-'));
+try {
+  for (const [filePath, content] of Object.entries(jsScaffold.fileContents)) {
+    const absolutePath = join(jsScaffoldDir, filePath);
+    mkdirSync(dirname(absolutePath), {recursive: true});
+    writeFileSync(absolutePath, content, 'utf8');
+  }
+  const jsTestOutput = execFileSync(process.execPath, ['--test'], {
+    cwd: jsScaffoldDir,
+    encoding: 'utf8'
+  });
+  assert.match(jsTestOutput, /# pass 1/, 'o teste do scaffold JavaScript deve executar e passar');
+} finally {
+  rmSync(jsScaffoldDir, {recursive: true, force: true});
+}
+
+const pyScaffold = codeEngine.scaffold('crie um projeto Python');
+assert.ok(pyScaffold.files.includes('tests/test_main.py'));
+assert.equal(pyScaffold.testCommand, 'python -m unittest discover -s tests');
+
+// O CI Ubuntu executa também o scaffold Python completo.
+const pyScaffoldDir = mkdtempSync(join(tmpdir(), 'nex-py-scaffold-'));
+try {
+  for (const [filePath, content] of Object.entries(pyScaffold.fileContents)) {
+    const absolutePath = join(pyScaffoldDir, filePath);
+    mkdirSync(dirname(absolutePath), {recursive: true});
+    writeFileSync(absolutePath, content, 'utf8');
+  }
+  const pyTestResult = spawnSync('python3', ['-m', 'unittest', 'discover', '-s', 'tests'], {
+    cwd: pyScaffoldDir,
+    encoding: 'utf8'
+  });
+  assert.equal(
+    pyTestResult.status,
+    0,
+    pyTestResult.stderr || pyTestResult.stdout || 'o teste do scaffold Python deve executar e passar'
+  );
+  assert.match(pyTestResult.stderr + pyTestResult.stdout, /OK/);
+} finally {
+  rmSync(pyScaffoldDir, {recursive: true, force: true});
+}
+
+assert.equal(codeEngine.testPlan('javascript').executionSupported, false);
+assert.throws(() => codeEngine.analyze('x', 'ruby'), /Linguagem não suportada/);
 
 const core = new NexCore();
 const before = JSON.stringify(core.chat.model.toJSON());
