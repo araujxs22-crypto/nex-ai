@@ -114,26 +114,32 @@ export class NexChatEngine {
     const socialReply = respondToSocialMessage(text);
     if (socialReply) return socialReply;
 
-    // O vocabulário neural é pequeno; não deixe termos centrais de programação
-    // caírem no fallback "unknown" só porque a frase é curta ou contém acento.
+    // Normalize a entrada antes de qualquer regra: acentos, pontuação e espaços.
     const normalized = String(text ?? '').toLowerCase()
       .normalize('NFD')
-      .replace(/[\\u0300-\\u036f]/g, '')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9_\s]/g, ' ')
       .trim()
-      .replace(/\\s+/g, ' ');
+      .replace(/\s+/g, ' ');
 
-    if (/^(programacao|ptogamacao|programar|codigo|codar)$/.test(normalized)) {
+    // Mensagens curtas sobre programação são pedidos de conversa, não texto desconhecido.
+    if (/^(programacao|programar|programando|codigo|codar|ptogamacao)$/.test(normalized)) {
       return {
         type: 'chat',
         text: 'Claro! Posso ajudar com programação, analisar código, encontrar erros ou montar um projeto. O que você quer programar?'
       };
     }
 
-    const codingIntent = /\\b(programacao|programar|programando|codigo|codar|javascript|typescript|python|html|css|script|bug|depurar|depuracao)\\b/.test(normalized)
-      || /ptogama/.test(normalized);
+    // Intenções explícitas evitam que "criar um aplicativo" seja confundido com vídeo.
+    const codingIntent = /\b(programacao|programar|programando|codigo|codar|python|javascript|typescript|html|css|script|bug|depurar|depuracao|app|aplicativo|aplicativos|programa|software|api|site)\b/.test(normalized)
+      || /\b(ptogama)\w*\b/.test(normalized);
+    const videoIntent = /\b(video|videos|cena|cenas|3d|animacao|animacoes|animar|storyboard|camera|render|renderizar|filmagem|curta|personagem|iluminacao)\b/.test(normalized);
+
     const classification = codingIntent
       ? {intent: 'code', rawIntent: 'code', accepted: true, confidence: 1, margin: 1, recognizedRatio: 1}
-      : this.classify(text);
+      : videoIntent
+        ? {intent: 'video', rawIntent: 'video', accepted: true, confidence: 1, margin: 1, recognizedRatio: 1}
+        : this.classify(text);
     const lower = text.toLowerCase();
 
     if (classification.intent === 'unknown') {
