@@ -13,7 +13,7 @@ function detectQuestionType(section) {
   const value = normalize(section);
   if (/preench(?:a|endo).*lacunas|lacunas/.test(value)) return 'fill-blanks';
   if (/\bcerto\b[\s\S]{0,100}\berrado\b/.test(value)) return 'true-false';
-  if (/(?:^|\n)\s*[a-d]\)/im.test(section)) return 'multiple-choice';
+  if (/\b[a-d]\)\s/.test(value)) return 'multiple-choice';
   if (/explique|justifique|descreva|redija|n[oº°]\s*minimo/.test(value)) return 'written-response';
   return 'question';
 }
