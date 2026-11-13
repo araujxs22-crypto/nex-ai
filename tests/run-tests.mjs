@@ -415,7 +415,7 @@ const integratedSite = readFileSync(new URL('../index.html', import.meta.url), '
 assert.ok(integratedSite.includes("import { NexCore } from './src/index.js'"), 'site importa o Core');
 assert.ok(integratedSite.includes('window.nexCore = core'), 'site expõe a instância do Core');
 assert.ok(integratedSite.includes('window.nexReady'), 'site aguarda a inicialização');
-assert.ok(integratedSite.includes('NEX CORE 0.3.0'), 'site identifica a versão integrada');
+assert.ok(integratedSite.includes('NEX CORE 0.4.0'), 'site identifica a versão integrada');
 assert.ok(integratedSite.includes('id="nex-core-status"'), 'site exibe estado do Core');
 console.log(JSON.stringify({
   ok: true,
