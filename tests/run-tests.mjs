@@ -21,7 +21,10 @@ const invalidJs = codeEngine.analyze(
   'javascript'
 );
 assert.equal(invalidJs.valid, false, 'JavaScript com delimitadores e atribuições inválidas deve falhar');
-assert.ok(invalidJs.diagnostics.some(item => item.code === 'MISMATCHED_DELIMITER'));
+assert.ok(invalidJs.diagnostics.some(item => item.code === 'UNCLOSED_DELIMITER'));
+
+const mismatchedJs = codeEngine.analyze('const items = [1, 2);', 'javascript');
+assert.ok(mismatchedJs.diagnostics.some(item => item.code === 'MISMATCHED_DELIMITER'));
 assert.ok(invalidJs.diagnostics.some(item => item.code === 'JS_CONST_WITHOUT_INITIALIZER'));
 assert.ok(invalidJs.diagnostics.some(item => item.code === 'JS_EMPTY_ASSIGNMENT'));
 assert.ok(invalidJs.diagnostics.some(item => item.code === 'JS_EVAL_USAGE'));
