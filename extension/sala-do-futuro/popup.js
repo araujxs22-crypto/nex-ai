@@ -17,6 +17,16 @@ async function runOnPage(func, args = []) {
   return results?.[0]?.result;
 }
 
+$('googleSearch').addEventListener('click', async () => {
+  const query = $('googleQuery').value.trim();
+  if (!query) return report('Digite o que deseja pesquisar.');
+  try {
+    const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
+    await chrome.tabs.update(tab.id,{url:'https://www.google.com/search?q=' + encodeURIComponent(query)});
+    report('Pesquisa aberta no Google. Depois que carregar, abra novamente a extensão para ler os resultados.');
+  } catch(error) { report(error.message || 'Não foi possível pesquisar no Google.'); }
+});
+
 $('navigate').addEventListener('click', async () => {
   try {
     const raw = $('url').value.trim();
