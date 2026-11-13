@@ -10,7 +10,8 @@ import {buildProjectPreview} from '../src/engines/project-preview.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
-import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';\nimport {clickElementOnPage, fillFieldOnPage} from '../extension/sala-do-futuro/page-actions.js';
+import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';
+import {clickElementOnPage, fillFieldOnPage} from '../extension/sala-do-futuro/page-actions.js';
 
 
 assert.equal(isSupportedPageUrl('https://saladofuturo.educacao.sp.gov.br/'), true);

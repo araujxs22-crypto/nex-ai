@@ -42,7 +42,7 @@ $('navigate').addEventListener('click', async () => {
   try {
     let raw = $('url').value.trim();
     if (!raw) throw new Error('Digite um endereço para abrir.');
-    if (!/^[a-z][a-z0-9+.-]*:\\/\\//i.test(raw)) raw = 'https://' + raw;
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) raw = 'https://' + raw;
     const url = new URL(raw);
     if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Use um endereço HTTPS válido, sem usuário ou senha.');
     await navigateTo(url.href);
@@ -69,7 +69,7 @@ $('read').addEventListener('click', async () => {
     const data = await runOnPage(readPageOnPage);
     const extracted = String(data?.text || '').trim();
     if (!extracted) throw new Error('Não encontrei texto visível nesta página.');
-    pageText = [data.title || 'Página', data.url || '', '', extracted].join('\\n');
+    pageText = [data.title || 'Página', data.url || '', '', extracted].join('\n');
     $('preview').value = pageText;
     $('copy').disabled = false;
     report('Página lida. Você pode copiar o conteúdo para o NEX.');

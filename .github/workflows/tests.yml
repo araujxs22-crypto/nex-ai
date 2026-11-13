@@ -3,13 +3,15 @@ name: NEX regression tests
 on:
   push:
     branches:
-      - feat/nex-project-generation-preview\n      - feat/nex-school-task-detection
+      - feat/nex-project-generation-preview
       - feat/chrome-extension-sala-do-futuro
-      - feat/nex-school-task-detection\n      - feat/nex-browser-agent
+      - feat/nex-school-task-detection
+      - feat/nex-browser-agent
   pull_request:
     branches:
       - feature/natural-dialogue-core
       - feat/nex-project-generation-preview
+      - feat/nex-school-task-detection
 
 permissions:
   contents: read

@@ -8,7 +8,7 @@ export function readPageOnPage() {
 }
 
 export function clickElementOnPage(needle) {
-  const normalize = value => String(value || '').replace(/\\s+/g, ' ').trim().toLocaleLowerCase();
+  const normalize = value => String(value || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
   const wanted = normalize(needle);
   if (!wanted) return {ok:false, message:'Digite o texto do link ou botão.'};
 
@@ -22,7 +22,7 @@ export function clickElementOnPage(needle) {
     if (tag === 'input' && type !== 'button') return false;
     if (tag === 'a') {
       const href = String(element.getAttribute?.('href') || '');
-      if (!href || /^\\s*javascript:/i.test(href)) return false;
+      if (!href || /^\s*javascript:/i.test(href)) return false;
     }
     const rect = element.getBoundingClientRect?.();
     return Boolean(rect && rect.width > 0 && rect.height > 0);
@@ -48,7 +48,7 @@ export function clickElementOnPage(needle) {
 }
 
 export function fillFieldOnPage(needle, text) {
-  const normalize = value => String(value || '').replace(/\\s+/g, ' ').trim().toLocaleLowerCase();
+  const normalize = value => String(value || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
   const wanted = normalize(needle);
   const typedText = String(text ?? '');
   if (!wanted) return {ok:false, message:'Informe o nome, rótulo ou placeholder do campo.'};

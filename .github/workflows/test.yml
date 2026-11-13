@@ -10,7 +10,8 @@ on:
       - 'eval/**'
       - 'calibration/**'
       - 'feature/**'
-      - 'integration/**'\n      - 'feat/nex-browser-agent'
+      - 'integration/**'
+      - 'feat/nex-browser-agent'
 
 permissions:
   contents: read
