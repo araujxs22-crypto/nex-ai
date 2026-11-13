@@ -9,6 +9,7 @@ on:
       - 'fix/**'
       - 'eval/**'
       - 'calibration/**'
+      - 'feature/**'
 
 permissions:
   contents: read
