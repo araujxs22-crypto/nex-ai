@@ -6,6 +6,7 @@ import {execFileSync, spawnSync} from 'node:child_process';
 import {runInNewContext} from 'node:vm';
 import {NexCore, TinyMLP, NexMemory} from '../src/index.js';
 import {NexCodeEngine} from '../src/engines/code-engine.js';
+import {buildProjectPreview} from '../src/engines/project-preview.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
@@ -89,27 +90,64 @@ assert.equal(fencedRequest.type, 'analysis');
 assert.ok(fencedRequest.result.diagnostics.some(item => item.code === 'JS_CONST_WITHOUT_INITIALIZER'));
 
 
-const websiteScaffold = codeEngine.scaffold('crie um site responsivo para uma barbearia');
-assert.equal(websiteScaffold.kind, 'website');
-assert.ok(websiteScaffold.fileContents['index.html'].includes('Apresente uma barbearia'));
-assert.ok(websiteScaffold.fileContents['styles.css'].includes('@media'));
-assert.ok(websiteScaffold.fileContents['src/main.js'].includes('initializeSite'));
-assert.ok(websiteScaffold.fileContents['tests/main.test.js']);
-const websiteScaffoldDir = mkdtempSync(join(tmpdir(), 'nex-website-scaffold-'));
+const barberScaffold = codeEngine.scaffold('crie um site responsivo para uma barbearia');
+assert.equal(barberScaffold.kind, 'website');
+assert.equal(barberScaffold.businessType, 'barbershop');
+assert.ok(barberScaffold.fileContents['index.html'].includes('CORTE'));
+assert.ok(barberScaffold.fileContents['index.html'].includes('Corte masculino'));
+assert.ok(barberScaffold.fileContents['index.html'].includes('R$ 45'));
+assert.ok(barberScaffold.fileContents['index.html'].includes('booking-form'));
+assert.ok(barberScaffold.fileContents['styles.css'].includes('@media'));
+assert.ok(barberScaffold.fileContents['src/main.js'].includes('initializeSite'));
+assert.doesNotMatch(barberScaffold.fileContents['index.html'], /Apresente uma barbearia|Uma presença digital bem construída/);
+
+const barberScaffoldDir = mkdtempSync(join(tmpdir(), 'nex-barbershop-scaffold-'));
 try {
-  for (const [filePath, content] of Object.entries(websiteScaffold.fileContents)) {
-    const absolutePath = join(websiteScaffoldDir, filePath);
+  for (const [filePath, content] of Object.entries(barberScaffold.fileContents)) {
+    const absolutePath = join(barberScaffoldDir, filePath);
     mkdirSync(dirname(absolutePath), {recursive: true});
     writeFileSync(absolutePath, content, 'utf8');
   }
-  const websiteTestOutput = execFileSync(process.execPath, ['--test'], {
-    cwd: websiteScaffoldDir,
+  const barberTestOutput = execFileSync(process.execPath, ['--test'], {
+    cwd: barberScaffoldDir,
     encoding: 'utf8'
   });
-  assert.match(websiteTestOutput, /# pass 2/, 'os testes do site gerado devem passar');
+  assert.match(barberTestOutput, /# pass 2/, 'os testes do site de barbearia devem passar');
 } finally {
-  rmSync(websiteScaffoldDir, {recursive: true, force: true});
+  rmSync(barberScaffoldDir, {recursive: true, force: true});
 }
+
+const gameScaffold = codeEngine.scaffold('Faça um jogo simples de adivinhação em JavaScript');
+assert.equal(gameScaffold.kind, 'game');
+assert.equal(gameScaffold.gameType, 'number-guessing');
+assert.ok(gameScaffold.fileContents['index.html'].includes('guess-form'));
+assert.ok(gameScaffold.fileContents['src/main.js'].includes('submitGuess'));
+const gameScaffoldDir = mkdtempSync(join(tmpdir(), 'nex-guessing-game-'));
+try {
+  for (const [filePath, content] of Object.entries(gameScaffold.fileContents)) {
+    const absolutePath = join(gameScaffoldDir, filePath);
+    mkdirSync(dirname(absolutePath), {recursive: true});
+    writeFileSync(absolutePath, content, 'utf8');
+  }
+  const gameTestOutput = execFileSync(process.execPath, ['--test'], {
+    cwd: gameScaffoldDir,
+    encoding: 'utf8'
+  });
+  assert.match(gameTestOutput, /# pass 6/, 'os testes do jogo de adivinhação devem passar');
+} finally {
+  rmSync(gameScaffoldDir, {recursive: true, force: true});
+}
+
+const previewHtml = buildProjectPreview(barberScaffold.fileContents);
+assert.match(previewHtml, /Content-Security-Policy/, 'a prévia deve aplicar CSP');
+assert.match(previewHtml, /connect-src 'none'/, 'a prévia deve bloquear conexões externas');
+assert.match(previewHtml, /<style>/, 'a prévia deve incorporar o CSS');
+assert.match(previewHtml, /Corte Nobre/, 'a prévia deve manter o conteúdo do site');
+assert.match(previewHtml, /initializeSite\(document\)/, 'a prévia deve incorporar o JavaScript do site');
+assert.doesNotMatch(previewHtml, /src="\.\/styles\.css"/, 'a prévia não deve depender do arquivo CSS externo');
+assert.doesNotMatch(previewHtml, /src="\.\/src\/main\.js"/, 'a prévia não deve depender do arquivo JavaScript externo');
+assert.throws(() => buildProjectPreview({}), /index\.html/, 'deve rejeitar projeto sem página HTML');
+assert.throws(() => buildProjectPreview({'index.html':'<html></html>','src/main.js':'import module from "https://example.com/module.js";'}), /imports externos/, 'deve recusar imports externos na prévia isolada');
 
 const jsScaffold = codeEngine.scaffold('crie um projeto JavaScript');
 assert.ok(jsScaffold.files.includes('package.json'));
@@ -325,6 +363,13 @@ assert.equal(cinematicPlan.camera.motion, 'pan');
 assert.deepEqual(cinematicPlan.scene.objects.map(object => object.type), ['spaceship', 'robot', 'city']);
 assert.equal(cinematicPlan.capabilities.videoGeneration, false, 'planejamento não deve se apresentar como vídeo renderizado');
 
+const negatedForestPlan = core.video.plan('Quero uma árvore, mas não quero uma floresta');
+assert.deepEqual(negatedForestPlan.scene.objects.map(object => object.type), ['tree'], 'uma floresta negada não deve entrar na cena');
+const exactWordPlan = core.video.plan('Crie uma cena de casamento com uma árvore');
+assert.deepEqual(exactWordPlan.scene.objects.map(object => object.type), ['tree'], 'casamento não deve ser confundido com casa');
+const explicitHousePlan = core.video.plan('Crie uma casa com uma árvore');
+assert.deepEqual(explicitHousePlan.scene.objects.map(object => object.type), ['house','tree'], 'uma casa explicitamente solicitada deve continuar sendo reconhecida');
+
 const video = core.ask('crie uma cena 3d com uma nave');
 assert.equal(video.type, 'video-plan', 'um comando de vídeo claro deve gerar um plano de vídeo');
 
@@ -416,7 +461,7 @@ const integratedSite = readFileSync(new URL('../index.html', import.meta.url), '
 assert.ok(integratedSite.includes("import { NexCore } from './src/index.js'"), 'site importa o Core');
 assert.ok(integratedSite.includes('window.nexCore = core'), 'site expõe a instância do Core');
 assert.ok(integratedSite.includes('window.nexReady'), 'site aguarda a inicialização');
-assert.ok(integratedSite.includes('NEX CORE 0.4.0'), 'site identifica a versão integrada');
+assert.ok(integratedSite.includes('NEX CORE 0.5.0'), 'site identifica a versão integrada');
 assert.ok(integratedSite.includes('id="nex-core-status"'), 'site exibe estado do Core');
 
 
