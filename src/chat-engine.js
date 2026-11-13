@@ -1,10 +1,12 @@
 import {TinyMLP, TextVectorizer} from './neural/tiny-mlp.js';
 import {IntentRouter} from './intent-router.js';
+import {calibrateRejectionThresholds} from './evaluation/calibration.js';
 import {
   TRAIN_EXAMPLES,
   VALIDATION_EXAMPLES,
   TEST_EXAMPLES,
   UNKNOWN_EXAMPLES,
+  UNKNOWN_CALIBRATION_EXAMPLES,
   DATASET_VERSION
 } from '../data/training-data.js';
 
@@ -64,6 +66,29 @@ export class NexChatEngine {
 
   classify(text) {
     return this.router.classify(text);
+  }
+
+  calibrateRouter(options = {}) {
+    const knownExamples = VALIDATION_EXAMPLES.filter(example => example.label !== 'unknown');
+    const result = calibrateRejectionThresholds({
+      knownExamples,
+      outOfDomainExamples: UNKNOWN_CALIBRATION_EXAMPLES,
+      minKnownCoverage: options.minKnownCoverage ?? 0.75,
+      classifyRaw: text => {
+        const prediction = this.model.predict(this.vectorizer.encode(text));
+        return {
+          rawIntent: this.labels[prediction.index],
+          confidence: prediction.confidence,
+          margin: prediction.margin,
+          recognizedRatio: this.vectorizer.recognizedRatio(text)
+        };
+      }
+    });
+
+    this.router.confidenceThreshold = result.thresholds.confidenceThreshold;
+    this.router.marginThreshold = result.thresholds.marginThreshold;
+    this.router.recognizedThreshold = result.thresholds.recognizedThreshold;
+    return result;
   }
 
   evaluate() {
