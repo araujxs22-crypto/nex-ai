@@ -1,5 +1,6 @@
 import {TinyMLP, TextVectorizer} from './neural/tiny-mlp.js';
 import {IntentRouter} from './intent-router.js';
+import {respondToSocialMessage} from './dialogue.js';
 import {calibrateRejectionThresholds} from './evaluation/calibration.js';
 import {
   TRAIN_EXAMPLES,
@@ -110,6 +111,9 @@ export class NexChatEngine {
   }
 
   handle(text) {
+    const socialReply = respondToSocialMessage(text);
+    if (socialReply) return socialReply;
+
     const classification = this.classify(text);
     const lower = text.toLowerCase();
 
@@ -117,7 +121,7 @@ export class NexChatEngine {
       return {
         type: 'clarification',
         classification,
-        text: 'Ainda não tenho confiança suficiente para identificar a intenção. Você quer conversar, guardar/recuperar uma memória, analisar código ou planejar uma cena?'
+        text: 'Não consegui entender o pedido. Pode explicar de outro jeito ou dizer o que você espera que eu faça?'
       };
     }
 
