@@ -149,3 +149,15 @@ export const UNKNOWN_EXAMPLES = [
   'me ensine a desenhar um cachorro',
   'como devo cuidar de uma bicicleta enferrujada?'
 ];
+
+// OOD para calibração dos limites: separado do conjunto OOD reservado ao teste.
+export const UNKNOWN_CALIBRATION_EXAMPLES = [
+  'qual a capital da Noruega?',
+  'como faço arroz integral na panela?',
+  'conte uma aventura sobre um pirata',
+  'qual a taxa de juros da poupanca?',
+  'me ensine um truque de magica simples',
+  'quando começa o proximo feriado nacional?',
+  'quais exercicios ajudam um goleiro?',
+  'quanto vale cento e cinquenta dolares em reais?'
+];
