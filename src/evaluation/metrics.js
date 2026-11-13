@@ -74,8 +74,9 @@ export function classificationMetrics(predictions, labels) {
 
 export function rejectionMetrics(knownPredictions, unknownPredictions) {
   return {
+    // Rejection is distinct from a confident prediction of the trained "unknown" class.
     knownRejected: knownPredictions.filter(
-      prediction => prediction.predicted === 'unknown'
+      prediction => prediction.accepted === false
     ).length / (knownPredictions.length || 1),
     unknownAccepted: unknownPredictions.filter(
       prediction => prediction.predicted !== 'unknown'
