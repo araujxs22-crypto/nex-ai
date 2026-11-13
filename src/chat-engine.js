@@ -2,6 +2,7 @@ import {TinyMLP, TextVectorizer} from './neural/tiny-mlp.js';
 import {IntentRouter} from './intent-router.js';
 import {respondToSocialMessage} from './dialogue.js';
 import {calibrateRejectionThresholds} from './evaluation/calibration.js';
+import {NexSchoolTaskEngine} from './engines/school-task-engine.js';
 import {
   TRAIN_EXAMPLES,
   VALIDATION_EXAMPLES,
@@ -27,6 +28,8 @@ export class NexChatEngine {
     this.memory = memory;
     this.video = video;
     this.code = code;
+    this.school = new NexSchoolTaskEngine();
+    this.activeSchoolTask = null;
 
     const {vectorizer, labels} = TextVectorizer.fromExamples(TRAIN_EXAMPLES);
     this.vectorizer = vectorizer;
@@ -114,6 +117,13 @@ export class NexChatEngine {
     const socialReply = respondToSocialMessage(text);
     if (socialReply) return socialReply;
 
+    // Reconhece texto copiado da Sala do Futuro antes do classificador de intenções.
+    const schoolTask = this.school.parse(text);
+    if (schoolTask) {
+      this.activeSchoolTask = schoolTask;
+      return {type: 'school-task', result: schoolTask, text: this.school.describe(schoolTask)};
+    }
+
     // Normalize a entrada antes de qualquer regra: acentos, pontuação e espaços.
     const normalized = String(text ?? '').toLowerCase()
       .normalize('NFD')
@@ -121,6 +131,12 @@ export class NexChatEngine {
       .replace(/[^a-z0-9_\s]/g, ' ')
       .trim()
       .replace(/\s+/g, ' ');
+
+    // Mantém o contexto da atividade para pedidos como “me ajuda na questão 2”.
+    const questionRequest = normalized.match(/\bquestao\s*(\d+)\b/);
+    if (this.activeSchoolTask && questionRequest) {
+      return this.school.guideQuestion(this.activeSchoolTask, Number(questionRequest[1]));
+    }
 
     // Mensagens curtas sobre programação são pedidos de conversa, não texto desconhecido.
     if (/^(programacao|programar|programando|codigo|codar|ptogamacao)$/.test(normalized)) {
