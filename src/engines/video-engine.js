@@ -40,15 +40,23 @@ export class NexVideoEngine {
     const durationSeconds = clamp(Number(durationMatch?.[1] || 8), 2, 60);
     const objects = [];
     const usedTypes = new Set();
-
-    for (const definition of OBJECT_DEFINITIONS) {
-      const foundTerm = definition.terms.find(term => {
+    const orderedDefinitions = OBJECT_DEFINITIONS.map(definition => {
+      const candidates = definition.terms.map(term => {
         const normalizedTerm = normalize(term);
         const exactMatch = new RegExp('\\b' + normalizedTerm + '\\b');
+        const match = exactMatch.exec(normalized);
+        if (!match) return null;
         const negatedMatch = new RegExp('\\b(?:nao|sem|evite|evitar|dispenso|exceto)\\b(?:\\s+[a-z0-9_]+){0,3}\\s+\\b' + normalizedTerm + '\\b');
-        return exactMatch.test(normalized) && !negatedMatch.test(normalized);
-      });
-      if (!foundTerm || usedTypes.has(definition.type)) continue;
+        if (negatedMatch.test(normalized)) return null;
+        return {definition, foundTerm:term, index:match.index};
+      }).filter(Boolean).sort((a,b)=>a.index-b.index);
+      return candidates[0] || null;
+    }).filter(Boolean).sort((a,b)=>a.index-b.index);
+
+    for (const match of orderedDefinitions) {
+      const definition = match.definition;
+      const foundTerm = match.foundTerm;
+      if (usedTypes.has(definition.type)) continue;
       usedTypes.add(definition.type);
       const index = objects.length;
       const position = index === 0
@@ -67,7 +75,6 @@ export class NexVideoEngine {
         animation: inferAnimation(normalized)
       });
     }
-
     if (objects.length === 0) {
       objects.push({
         id:'subject_1',
