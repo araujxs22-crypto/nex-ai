@@ -5,10 +5,17 @@ import {join, dirname} from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {NexCore, TinyMLP} from '../src/index.js';
 import {NexCodeEngine} from '../src/engines/code-engine.js';
+import {LOCAL_MODEL, loadLocalLLM, generateLocalReply} from '../src/local-llm.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
 
+
+assert.equal(LOCAL_MODEL.id, 'HuggingFaceTB/SmolLM2-135M-Instruct');
+assert.equal(LOCAL_MODEL.quantization, 'q4');
+assert.match(LOCAL_MODEL.approximateDownload, /200 MB/);
+assert.equal(typeof loadLocalLLM, 'function');
+assert.equal(typeof generateLocalReply, 'function');
 
 const codeEngine = new NexCodeEngine();
 
