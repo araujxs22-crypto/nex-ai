@@ -5,6 +5,28 @@ import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES} from '../data/training-data.js';
 
 const core = new NexCore();
+const vectorizer = core.chat.vectorizer;
+assert.ok(vectorizer.vocab.includes('u:nave'), 'vocabulário deve conter unigramas');
+assert.ok(vectorizer.vocab.includes('b:nave_pousando'), 'vocabulário deve conter bigramas');
+assert.ok(
+  vectorizer.featureTokens('nave pousando').includes('b:nave_pousando'),
+  'vetorizador deve gerar bigrama ordenado'
+);
+assert.notDeepEqual(
+  vectorizer.encode('nave pousando'),
+  vectorizer.encode('pousando nave'),
+  'bigramas devem distinguir a ordem das palavras'
+);
+assert.equal(
+  vectorizer.recognizedRatio('nave palavra_desconhecida'),
+  0.5,
+  'rejeição deve continuar baseada em cobertura de unigramas'
+);
+assert.ok(
+  vectorizer.encode('nave pousando').every(Number.isFinite),
+  'vetores com bigramas devem conter apenas números finitos'
+);
+
 const before = JSON.stringify(core.chat.model.toJSON());
 const history = core.train({epochs: 500, patience: 60});
 const after = JSON.stringify(core.chat.model.toJSON());
