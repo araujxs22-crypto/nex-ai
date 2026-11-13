@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feat/nex-project-generation-preview
+      - feat/chrome-extension-sala-do-futuro
   pull_request:
     branches:
       - feature/natural-dialogue-core
+      - feat/nex-project-generation-preview
 
 permissions:
   contents: read
@@ -21,3 +23,7 @@ jobs:
         run: node --version && npm --version
       - name: Run regression suite
         run: npm test
+      - name: Check Chrome extension JavaScript
+        run: node --check extension/sala-do-futuro/popup.js && node --check extension/sala-do-futuro/policy.js
+      - name: Validate Chrome extension manifest
+        run: node -e "const m=require('./extension/sala-do-futuro/manifest.json'); if(m.manifest_version!==3) process.exit(1); console.log(m.name)"
