@@ -6,7 +6,7 @@ Módulo independente, offline e sem APIs pagas para ser integrado a uma aplicaç
 
 - **Rede neural própria:** MLP pequena em JavaScript puro, com camada oculta `tanh`, saída `softmax`, entropia cruzada, backpropagation, atualização de pesos, métricas e serialização.
 - **NEX Video Engine:** transforma uma descrição em um plano JSON de cena, objetos, câmera, iluminação e timeline. É um planejador, não um renderizador ou gerador de vídeo.
-- **NEX Code Engine 0.3.0:** análise estrutural leve para JavaScript, Python e HTML; diagnósticos com severidade, linha, coluna e sugestão; detecção de delimitadores/string sem fechamento, atribuições incompletas, cabeçalhos Python sem dois-pontos, tags HTML incompatíveis e ids duplicados; scaffolds JavaScript/Python com arquivos de teste e comandos sugeridos.
+- **NEX Code Engine 0.3.0:** análise estrutural leve para JavaScript, Python e HTML; diagnósticos com severidade, linha, coluna e sugestão; detecção de delimitadores/string sem fechamento, atribuições incompletas, cabeçalhos Python sem dois-pontos, tags HTML incompatíveis e ids duplicados; scaffolds JavaScript/Python com arquivos de teste e comandos sugeridos; os projetos gerados são executados em diretórios temporários no CI para validar os testes incluídos.
 - **NEX Chat:** classifica intenções e coordena vídeo, código e memória. Conversação geral é deliberadamente limitada e local.
 - **Memória:** armazenamento persistente em `localStorage` no navegador, com busca lexical e exportação/importação JSON. Memória não altera os pesos da rede.
 
