@@ -325,16 +325,18 @@ export class NexCodeEngine {
   scaffold(request = '') {
     const language = request.toLowerCase().includes('python') ? 'python' : 'javascript';
     if (language === 'python') {
-      const files = ['README.md', 'pyproject.toml', 'src/main.py', 'tests/test_main.py'];
+      const files = ['README.md', 'pyproject.toml', 'src/__init__.py', 'src/main.py', 'tests/__init__.py', 'tests/test_main.py'];
       return {
         language, files,
         fileContents: {
-          'README.md': '# Projeto NEX\n\nEstrutura inicial gerada para: ' + request + '\n\nExecute os testes com python -m unittest discover.\n',
+          'README.md': '# Projeto NEX\n\nEstrutura inicial gerada para: ' + request + '\n\nExecute os testes com python -m unittest discover -s tests.\n',
           'pyproject.toml': '[project]\nname = "nex-generated-project"\nversion = "0.1.0"\nrequires-python = ">=3.10"\n',
+          'src/__init__.py': '',
           'src/main.py': 'def main():\n    return "Olá, mundo!"\n\n\nif __name__ == "__main__":\n    print(main())\n',
+          'tests/__init__.py': '',
           'tests/test_main.py': 'import unittest\nfrom src.main import main\n\nclass MainTests(unittest.TestCase):\n    def test_main_returns_greeting(self):\n        self.assertEqual(main(), "Olá, mundo!")\n\nif __name__ == "__main__":\n    unittest.main()\n'
         },
-        testCommand: 'python -m unittest discover'
+        testCommand: 'python -m unittest discover -s tests'
       };
     }
     const files = ['README.md', 'package.json', 'src/main.js', 'tests/main.test.js'];
