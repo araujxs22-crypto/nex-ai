@@ -15,25 +15,51 @@ assert.ok(history.at(-1).validation, 'validação deve ser medida');
 
 const evalResult = core.evaluate();
 const knownMetrics = classificationMetrics(evalResult.predictions, core.chat.labels);
-const rejection = rejectionMetrics(evalResult.predictions, evalResult.unknown);
-assert.equal(TRAIN_EXAMPLES.length, 20);
-assert.equal(VALIDATION_EXAMPLES.length, 4);
-assert.equal(TEST_EXAMPLES.length, 4);
-assert.equal(UNKNOWN_EXAMPLES.length, 4);
+const knownPredictions = evalResult.predictions.filter(example => example.actual !== 'unknown');
+const rejection = rejectionMetrics(knownPredictions, evalResult.unknown);
+
+const labels = ['video', 'code', 'memory', 'general', 'unknown'];
+for (const [name, examples, expectedPerClass] of [
+  ['treino', TRAIN_EXAMPLES, 12],
+  ['validação', VALIDATION_EXAMPLES, 4],
+  ['teste', TEST_EXAMPLES, 6]
+]) {
+  assert.equal(examples.length, expectedPerClass * labels.length, `tamanho do split de ${name}`);
+  for (const label of labels) {
+    assert.equal(
+      examples.filter(example => example.label === label).length,
+      expectedPerClass,
+      `split de ${name} deve ser balanceado para ${label}`
+    );
+  }
+}
+assert.equal(UNKNOWN_EXAMPLES.length, 10, 'deve haver dez sondagens OOD independentes');
 assert.ok(Number.isFinite(knownMetrics.macro.f1));
-assert.ok(rejection.unknownRejected >= 0);
+assert.ok(rejection.unknownRejected >= 0 && rejection.unknownRejected <= 1);
+
+const diagnosticMetrics = classificationMetrics([
+  {actual: 'video', predicted: 'unknown'},
+  {actual: 'code', predicted: 'code'},
+  {actual: 'unknown', predicted: 'unknown'}
+], labels);
+assert.equal(diagnosticMetrics.confusionMatrix.video.unknown, 1);
+assert.equal(diagnosticMetrics.confusionMatrix.code.code, 1);
+assert.equal(diagnosticMetrics.accuracy, 2 / 3);
+assert.equal(diagnosticMetrics.macro.supportedClasses, 3);
 
 const leakage = leakageReport({
   train: TRAIN_EXAMPLES,
   validation: VALIDATION_EXAMPLES,
-  test: TEST_EXAMPLES
+  test: TEST_EXAMPLES,
+  outOfDomain: UNKNOWN_EXAMPLES.map(text => ({label: 'unknown', text}))
 });
 assert.equal(leakage.duplicateCount, 0, 'não pode haver duplicatas entre splits');
+assert.equal(leakage.similarPairCount, 0, 'não pode haver pares quase duplicados entre splits');
 
-const unknown = core.ask('qual a receita de bolo de cenoura');
+const unknown = core.ask('qual o melhor jeito de temperar feijao?');
 assert.equal(unknown.type, 'clarification');
 const video = core.ask('crie uma cena 3d com uma nave');
-assert.ok(['video-plan', 'clarification'].includes(video.type));
+assert.equal(video.type, 'video-plan', 'um comando de vídeo claro deve gerar um plano de vídeo');
 
 const savedWeights = core.chat.model.toJSON();
 assert.deepEqual(
@@ -121,6 +147,13 @@ try {
 
 console.log(JSON.stringify({
   ok: true,
+  datasetVersion: core.chat.datasetVersion,
+  counts: {
+    train: TRAIN_EXAMPLES.length,
+    validation: VALIDATION_EXAMPLES.length,
+    test: TEST_EXAMPLES.length,
+    outOfDomain: UNKNOWN_EXAMPLES.length
+  },
   epochs: history.length,
   initialLoss: history[0].loss,
   finalTrainLoss: history.at(-1).loss,
@@ -129,8 +162,16 @@ console.log(JSON.stringify({
   macroF1: knownMetrics.macro.f1,
   perClass: knownMetrics.perClass,
   confusionMatrix: knownMetrics.confusionMatrix,
-  unknownRejected: rejection.unknownRejected,
+  knownRejected: rejection.knownRejected,
+  outOfDomainRejected: rejection.unknownRejected,
   leakage,
+  evaluationTests: [
+    'balanced train, validation and test splits',
+    'unknown predictions included in confusion matrix',
+    'macro averages calculated over supported classes',
+    'independent out-of-domain examples',
+    'explicit video command routed to video-plan'
+  ],
   persistenceTests: [
     'round-trip de pesos',
     'restauração de labels e vocabulário',
