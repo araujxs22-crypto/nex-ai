@@ -58,7 +58,7 @@ export class NexCore {
   get status() {
     return {
       name: 'NEX Core',
-      version: '0.2.3',
+      version: '0.3.0',
       offline: true,
       trainableNetwork: true,
       intentRejection: true,
