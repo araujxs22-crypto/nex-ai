@@ -2,7 +2,7 @@ name: NEX Core tests
 
 on:
   pull_request:
-    branches: [main, 'fix/**', 'feature/**', 'integration/**']
+    branches: [main, 'fix/**', 'feature/**', 'integration/**', 'feat/nex-school-task-detection']
   push:
     branches:
       - main
@@ -10,7 +10,7 @@ on:
       - 'eval/**'
       - 'calibration/**'
       - 'feature/**'
-      - 'integration/**'
+      - 'integration/**'\n      - 'feat/nex-browser-agent'
 
 permissions:
   contents: read

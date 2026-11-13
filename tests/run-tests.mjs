@@ -10,7 +10,7 @@ import {buildProjectPreview} from '../src/engines/project-preview.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
-import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';
+import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';\nimport {clickElementOnPage, fillFieldOnPage} from '../extension/sala-do-futuro/page-actions.js';
 
 
 assert.equal(isSupportedPageUrl('https://saladofuturo.educacao.sp.gov.br/'), true);
@@ -19,6 +19,83 @@ assert.equal(isSupportedPageUrl('http://saladofuturo.educacao.sp.gov.br/'), fals
 assert.equal(isSupportedPageUrl('https://saladofuturo.educacao.sp.gov.br.evil.example/'), true);
 assert.equal(isSupportedPageUrl('https://example.com/'), true);
 assert.equal(isSupportedPageUrl('https://usuario:senha@saladofuturo.educacao.sp.gov.br/'), false);
+
+function mockBrowserElement({
+  tagName='INPUT', type='text', name='', id='', placeholder='', ariaLabel='',
+  autocomplete='', value='', text='', href='', labels=[], options=[], editable=false
+}={}) {
+  let currentValue = value;
+  const events = [];
+  return {
+    tagName, type, name, id, placeholder, autocomplete, labels, options,
+    innerText:text, textContent:text, disabled:false, readOnly:false,
+    isContentEditable:editable, events, clickCount:0,
+    get value() { return currentValue; },
+    set value(next) { currentValue = String(next); },
+    getAttribute(attribute) {
+      if (attribute === 'aria-label') return ariaLabel;
+      if (attribute === 'autocomplete') return autocomplete;
+      if (attribute === 'href') return href;
+      if (attribute === 'contenteditable') return editable ? 'true' : null;
+      if (attribute === 'aria-disabled') return null;
+      return null;
+    },
+    getBoundingClientRect() { return {width:120,height:24}; },
+    focus() { this.focused = true; },
+    dispatchEvent(event) { events.push(event.type); return true; },
+    click() { this.clickCount += 1; }
+  };
+}
+const originalDocumentForBrowserTests = globalThis.document;
+let browserTestElements = [];
+globalThis.document = {querySelectorAll: () => browserTestElements};
+try {
+  const searchInput = mockBrowserElement({name:'q',placeholder:'Pesquisar'});
+  browserTestElements = [searchInput];
+  const fillResult = fillFieldOnPage('Pesquisar', 'melhores jogos leves');
+  assert.equal(fillResult.ok, true, 'deve preencher um campo de texto visível');
+  assert.equal(searchInput.value, 'melhores jogos leves');
+  assert.ok(searchInput.events.includes('input') && searchInput.events.includes('change'), 'deve notificar eventos de entrada e alteração');
+
+  const select = mockBrowserElement({
+    tagName:'SELECT', type:'select-one', name:'category',
+    options:[
+      {label:'Tecnologia',textContent:'Tecnologia',value:'tech',disabled:false},
+      {label:'Esportes',textContent:'Esportes',value:'sports',disabled:false}
+    ]
+  });
+  browserTestElements = [select];
+  const selectResult = fillFieldOnPage('category', 'Esportes');
+  assert.equal(selectResult.ok, true, 'deve selecionar uma opção de lista suspensa');
+  assert.equal(select.value, 'sports');
+  assert.ok(select.events.includes('change'));
+
+  const password = mockBrowserElement({type:'password',name:'password',placeholder:'Senha'});
+  const oneTimeCode = mockBrowserElement({type:'text',name:'otp',placeholder:'Código',autocomplete:'one-time-code'});
+  browserTestElements = [password, oneTimeCode];
+  assert.equal(fillFieldOnPage('Senha', '123456').ok, false, 'não deve preencher campos de senha');
+  assert.equal(fillFieldOnPage('Código', '123456').ok, false, 'não deve preencher campos de código de verificação');
+
+  const firstName = mockBrowserElement({name:'first',placeholder:'Nome'});
+  const secondName = mockBrowserElement({name:'last',placeholder:'Nome'});
+  browserTestElements = [firstName, secondName];
+  assert.equal(fillFieldOnPage('Nome', 'Kaue').ok, false, 'deve evitar escolher um campo ambíguo');
+
+  const submitButton = mockBrowserElement({tagName:'BUTTON',type:'submit',text:'Enviar'});
+  const safeLink = mockBrowserElement({tagName:'A',text:'Abrir documentação',href:'/docs'});
+  browserTestElements = [submitButton, safeLink];
+  const clickResult = clickElementOnPage('Abrir documentação');
+  assert.equal(clickResult.ok, true, 'deve clicar em um link visível com correspondência exata');
+  assert.equal(safeLink.clickCount, 1);
+  assert.equal(submitButton.clickCount, 0, 'nunca deve acionar botões de envio');
+
+  browserTestElements = [safeLink, mockBrowserElement({tagName:'A',text:'Abrir documentação avançada',href:'/advanced'})];
+  assert.equal(clickElementOnPage('Abrir documentação').ok, false, 'deve pedir texto específico quando a busca parcial é ambígua');
+} finally {
+  if (originalDocumentForBrowserTests === undefined) delete globalThis.document;
+  else globalThis.document = originalDocumentForBrowserTests;
+}
+
 const salaExtensionManifest = JSON.parse(readFileSync(new URL('../extension/sala-do-futuro/manifest.json', import.meta.url), 'utf8'));
 assert.equal(salaExtensionManifest.manifest_version, 3);
 assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', 'clipboardWrite']);

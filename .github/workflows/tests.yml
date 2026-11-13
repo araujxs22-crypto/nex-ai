@@ -3,9 +3,9 @@ name: NEX regression tests
 on:
   push:
     branches:
-      - feat/nex-project-generation-preview
+      - feat/nex-project-generation-preview\n      - feat/nex-school-task-detection
       - feat/chrome-extension-sala-do-futuro
-      - feat/nex-school-task-detection
+      - feat/nex-school-task-detection\n      - feat/nex-browser-agent
   pull_request:
     branches:
       - feature/natural-dialogue-core
@@ -25,6 +25,6 @@ jobs:
       - name: Run regression suite
         run: npm test
       - name: Check Chrome extension JavaScript
-        run: node --check extension/sala-do-futuro/popup.js && node --check extension/sala-do-futuro/policy.js
+        run: node --check extension/sala-do-futuro/popup.js && node --check extension/sala-do-futuro/policy.js && node --check extension/sala-do-futuro/page-actions.js
       - name: Validate Chrome extension manifest
         run: node -e "const m=require('./extension/sala-do-futuro/manifest.json'); if(m.manifest_version!==3) process.exit(1); console.log(m.name)"

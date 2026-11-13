@@ -12,7 +12,7 @@ input,textarea{width:100%;background:#0e111a;color:#edf0fa;border:1px solid #3a4
 textarea{height:145px;resize:vertical;font-family:Consolas,monospace}
 button{border:0;border-radius:8px;padding:9px 10px;font-weight:600;cursor:pointer;background:#30384a;color:#edf0fa}
 button.primary{background:#887cf2;color:#111522}button:disabled{opacity:.4;cursor:not-allowed}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.nav-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px}
 #status{min-height:34px;padding:8px;border:1px solid #3a4257;border-radius:8px;color:#b8c5df;font-size:11px;margin:10px 0}
 small{color:#8290aa}.warning{color:#e6c98a}
 </style></head>
@@ -24,14 +24,14 @@ small{color:#8290aa}.warning{color:#e6c98a}
 <button id="googleSearch" class="primary" style="width:100%;margin-top:7px">Pesquisar no Google</button>
 <label for="url">Abrir endereço HTTPS</label>
 <input id="url" type="url" placeholder="https://www.google.com">
-<div class="actions"><button id="navigate" class="primary">Abrir endereço</button><button id="read">Ler página</button></div>
+<div class="actions"><button id="navigate" class="primary">Abrir endereço</button><button id="read">Ler página</button></div>\n<div class="nav-actions"><button id="back">← Voltar</button><button id="forward">Avançar →</button><button id="reload">↻ Recarregar</button></div>
 <label for="target">Texto do botão ou link para clicar</label>
 <input id="target" placeholder="Ex.: Pesquisar">
 <button id="click" class="primary" style="width:100%;margin-top:7px">Clicar no elemento encontrado</button>
-<label for="field">Campo a preencher (nome, rótulo ou placeholder)</label>
+<label for="field">Campo para preencher (texto ou lista suspensa)</label>
 <input id="field" placeholder="Ex.: Pesquisar">
 <label for="value">Texto para digitar</label>
-<input id="value" placeholder="Digite o texto">
+<input id="value" placeholder="Texto ou opção desejada">
 <button id="type" style="width:100%;margin-top:7px">Preencher campo (não envia)</button>
 <div id="status" role="status" aria-live="polite">Aguardando sua ação.</div>
 <label for="preview">Conteúdo lido da página</label>
