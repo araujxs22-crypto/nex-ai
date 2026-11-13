@@ -13,6 +13,16 @@ assert.notEqual(before, after, 'pesos devem mudar');
 assert.ok(history.length <= 500, 'early stopping deve ser permitido');
 assert.ok(history.at(-1).validation, 'validação deve ser medida');
 
+const beforeCalibrationEvaluation = core.evaluate();
+const beforeKnownMetrics = classificationMetrics(
+  beforeCalibrationEvaluation.predictions,
+  core.chat.labels
+);
+const beforeKnownPredictions = beforeCalibrationEvaluation.predictions.filter(
+  example => example.actual !== 'unknown'
+);
+const beforeRejection = rejectionMetrics(beforeKnownPredictions, beforeCalibrationEvaluation.unknown);
+
 const weightsBeforeCalibration = JSON.stringify(core.chat.model.toJSON());
 const calibration = core.calibrate({minKnownCoverage: 0.75});
 assert.ok(calibration.metrics.knownCoverage >= 0.75, 'calibração deve respeitar cobertura mínima');
@@ -57,6 +67,19 @@ assert.equal(diagnosticMetrics.confusionMatrix.video.unknown, 1);
 assert.equal(diagnosticMetrics.confusionMatrix.code.code, 1);
 assert.equal(diagnosticMetrics.accuracy, 2 / 3);
 assert.equal(diagnosticMetrics.macro.supportedClasses, 3);
+
+const rejectionDiagnostic = rejectionMetrics([
+  {predicted: 'unknown', accepted: false},
+  {predicted: 'unknown', accepted: true},
+  {predicted: 'code', accepted: true}
+], [
+  {predicted: 'unknown', accepted: false},
+  {predicted: 'unknown', accepted: true},
+  {predicted: 'video', accepted: true}
+]);
+assert.equal(rejectionDiagnostic.knownRejected, 1 / 3, 'rejeição não deve confundir erro de classe com corte por threshold');
+assert.equal(rejectionDiagnostic.unknownAccepted, 1 / 3);
+assert.equal(rejectionDiagnostic.unknownRejected, 2 / 3);
 
 const leakage = leakageReport({
   train: TRAIN_EXAMPLES,
@@ -171,6 +194,18 @@ console.log(JSON.stringify({
   initialLoss: history[0].loss,
   finalTrainLoss: history.at(-1).loss,
   finalValidationLoss: history.at(-1).validation?.loss,
+  beforeCalibration: {
+    testAccuracy: beforeKnownMetrics.accuracy,
+    macroF1: beforeKnownMetrics.macro.f1,
+    knownRejected: beforeRejection.knownRejected,
+    outOfDomainRejected: beforeRejection.unknownRejected
+  },
+  afterCalibration: {
+    testAccuracy: knownMetrics.accuracy,
+    macroF1: knownMetrics.macro.f1,
+    knownRejected: rejection.knownRejected,
+    outOfDomainRejected: rejection.unknownRejected
+  },
   testAccuracy: knownMetrics.accuracy,
   macroF1: knownMetrics.macro.f1,
   perClass: knownMetrics.perClass,
