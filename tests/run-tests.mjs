@@ -1,8 +1,71 @@
 import assert from 'node:assert/strict';
 import {NexCore, TinyMLP} from '../src/index.js';
+import {NexCodeEngine} from '../src/engines/code-engine.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
+
+
+const codeEngine = new NexCodeEngine();
+
+const validJs = codeEngine.analyze(
+  'const total = 3;\nif (total === 3) {\n  console.log("ok");\n}',
+  'javascript'
+);
+assert.equal(validJs.valid, true, 'JavaScript estruturalmente balanceado deve passar');
+assert.equal(validJs.language, 'javascript');
+assert.ok(validJs.diagnostics.some(item => item.code === 'JS_CONSOLE_LOG'));
+
+const invalidJs = codeEngine.analyze(
+  'function greet( {\n  const name;\n  const value = ;\n  eval("alert(1)");\n}',
+  'javascript'
+);
+assert.equal(invalidJs.valid, false, 'JavaScript com delimitadores e atribuições inválidas deve falhar');
+assert.ok(invalidJs.diagnostics.some(item => item.code === 'MISMATCHED_DELIMITER'));
+assert.ok(invalidJs.diagnostics.some(item => item.code === 'JS_CONST_WITHOUT_INITIALIZER'));
+assert.ok(invalidJs.diagnostics.some(item => item.code === 'JS_EMPTY_ASSIGNMENT'));
+assert.ok(invalidJs.diagnostics.some(item => item.code === 'JS_EVAL_USAGE'));
+assert.ok(invalidJs.diagnostics.every(item => Number.isInteger(item.line) && Number.isInteger(item.column)));
+
+const unterminatedString = codeEngine.analyze('const message = "hello;', 'javascript');
+assert.ok(unterminatedString.diagnostics.some(item => item.code === 'JS_UNTERMINATED_STRING'));
+
+const pythonResult = codeEngine.analyze(
+  'def greet(name)\n    value =\n    return name',
+  'python'
+);
+assert.equal(pythonResult.valid, false);
+assert.ok(pythonResult.diagnostics.some(item => item.code === 'PY_MISSING_COLON'));
+assert.ok(pythonResult.diagnostics.some(item => item.code === 'PY_EMPTY_ASSIGNMENT'));
+
+const htmlResult = codeEngine.analyze(
+  '<div id="app"><span></div><p id="app">x</p>',
+  'html'
+);
+assert.equal(htmlResult.valid, false);
+assert.ok(htmlResult.diagnostics.some(item => item.code === 'HTML_MISMATCHED_TAG'));
+assert.ok(htmlResult.diagnostics.some(item => item.code === 'HTML_DUPLICATE_ID'));
+
+assert.equal(codeEngine.detectLanguage('def main():\n    return 1'), 'python');
+assert.equal(codeEngine.detectLanguage('<html><body></body></html>'), 'html');
+assert.equal(codeEngine.detectLanguage('const x = 1;'), 'javascript');
+
+const fence = String.fromCharCode(96).repeat(3);
+const fencedRequest = codeEngine.process('Analise este trecho:\n' + fence + 'javascript\nconst count;\n' + fence);
+assert.equal(fencedRequest.type, 'analysis');
+assert.ok(fencedRequest.result.diagnostics.some(item => item.code === 'JS_CONST_WITHOUT_INITIALIZER'));
+
+const jsScaffold = codeEngine.scaffold('crie um projeto JavaScript');
+assert.ok(jsScaffold.files.includes('package.json'));
+assert.ok(jsScaffold.fileContents['tests/main.test.js']);
+assert.equal(jsScaffold.testCommand, 'node --test');
+
+const pyScaffold = codeEngine.scaffold('crie um projeto Python');
+assert.ok(pyScaffold.files.includes('tests/test_main.py'));
+assert.equal(pyScaffold.testCommand, 'python -m unittest discover');
+
+assert.equal(codeEngine.testPlan('javascript').executionSupported, false);
+assert.throws(() => codeEngine.analyze('x', 'ruby'), /Linguagem não suportada/);
 
 const core = new NexCore();
 const before = JSON.stringify(core.chat.model.toJSON());
