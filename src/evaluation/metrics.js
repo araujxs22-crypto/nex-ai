@@ -73,16 +73,21 @@ export function classificationMetrics(predictions, labels) {
 }
 
 export function rejectionMetrics(knownPredictions, unknownPredictions) {
+  const knownTotal = knownPredictions.length || 1;
+  const unknownTotal = unknownPredictions.length || 1;
   return {
-    // Rejection is distinct from a confident prediction of the trained "unknown" class.
+    // Threshold rejection is separate from predicting the trained "unknown" label.
     knownRejected: knownPredictions.filter(
       prediction => prediction.accepted === false
-    ).length / (knownPredictions.length || 1),
+    ).length / knownTotal,
     unknownAccepted: unknownPredictions.filter(
-      prediction => prediction.predicted !== 'unknown'
-    ).length / (unknownPredictions.length || 1),
+      prediction => prediction.accepted === true
+    ).length / unknownTotal,
     unknownRejected: unknownPredictions.filter(
+      prediction => prediction.accepted === false
+    ).length / unknownTotal,
+    unknownClassPredicted: unknownPredictions.filter(
       prediction => prediction.predicted === 'unknown'
-    ).length / (unknownPredictions.length || 1)
+    ).length / unknownTotal
   };
 }
