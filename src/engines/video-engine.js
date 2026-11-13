@@ -42,7 +42,12 @@ export class NexVideoEngine {
     const usedTypes = new Set();
 
     for (const definition of OBJECT_DEFINITIONS) {
-      const foundTerm = definition.terms.find(term => normalized.includes(normalize(term)));
+      const foundTerm = definition.terms.find(term => {
+        const normalizedTerm = normalize(term);
+        const exactMatch = new RegExp('\\b' + normalizedTerm + '\\b');
+        const negatedMatch = new RegExp('\\b(?:nao|sem|evite|evitar|dispenso|exceto)\\b(?:\\s+[a-z0-9_]+){0,3}\\s+\\b' + normalizedTerm + '\\b');
+        return exactMatch.test(normalized) && !negatedMatch.test(normalized);
+      });
       if (!foundTerm || usedTypes.has(definition.type)) continue;
       usedTypes.add(definition.type);
       const index = objects.length;
