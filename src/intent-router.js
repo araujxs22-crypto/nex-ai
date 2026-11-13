@@ -1,0 +1,4 @@
+export class IntentRouter {
+  constructor({model,vectorizer,labels,confidenceThreshold=.40,marginThreshold=.06,recognizedThreshold=.20}={}){this.model=model;this.vectorizer=vectorizer;this.labels=labels;this.confidenceThreshold=confidenceThreshold;this.marginThreshold=marginThreshold;this.recognizedThreshold=recognizedThreshold;}
+  classify(text){const encoded=this.vectorizer.encode(text),raw=this.model.predict(encoded),recognized=this.vectorizer.recognizedRatio(text);const accepted=raw.confidence>=this.confidenceThreshold&&raw.margin>=this.marginThreshold&&recognized>=this.recognizedThreshold;return{intent:accepted?this.labels[raw.index]:'unknown',rawIntent:this.labels[raw.index],confidence:raw.confidence,margin:raw.margin,recognizedRatio:recognized,accepted,probabilities:raw.probabilities};}
+}

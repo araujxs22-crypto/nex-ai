@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {NexCore,TinyMLP} from '../src/index.js';
+import {classificationMetrics,rejectionMetrics} from '../src/evaluation/metrics.js';
+import {leakageReport} from '../src/evaluation/leakage.js';
+import {TRAIN_EXAMPLES,VALIDATION_EXAMPLES,TEST_EXAMPLES,UNKNOWN_EXAMPLES} from '../data/training-data.js';
+const core=new NexCore();const before=JSON.stringify(core.chat.model.toJSON());const history=core.train({epochs:500,patience:60});const after=JSON.stringify(core.chat.model.toJSON());assert.notEqual(before,after,'pesos devem mudar');assert.ok(history.length<=500,'early stopping deve ser permitido');assert.ok(history.at(-1).validation,'validação deve ser medida');
+const evalResult=core.evaluate();const knownMetrics=classificationMetrics(evalResult.predictions,core.chat.labels);const rejection=rejectionMetrics(evalResult.predictions,evalResult.unknown);assert.equal(TRAIN_EXAMPLES.length,20);assert.equal(VALIDATION_EXAMPLES.length,4);assert.equal(TEST_EXAMPLES.length,4);assert.equal(UNKNOWN_EXAMPLES.length,4);assert.ok(Number.isFinite(knownMetrics.macro.f1));assert.ok(rejection.unknownRejected>=0);
+const leakage=leakageReport({train:TRAIN_EXAMPLES,validation:VALIDATION_EXAMPLES,test:TEST_EXAMPLES});assert.equal(leakage.duplicateCount,0,'não pode haver duplicatas entre splits');
+const unknown=core.ask('qual a receita de bolo de cenoura');assert.equal(unknown.type,'clarification');const video=core.ask('crie uma cena 3d com uma nave');assert.ok(['video-plan','clarification'].includes(video.type));const saved=core.chat.model.toJSON();assert.deepEqual(TinyMLP.fromJSON(JSON.parse(JSON.stringify(saved))).toJSON(),saved,'persistência dos pesos');
+console.log(JSON.stringify({ok:true,epochs:history.length,initialLoss:history[0].loss,finalTrainLoss:history.at(-1).loss,finalValidationLoss:history.at(-1).validation?.loss,testAccuracy:knownMetrics.accuracy,macroF1:knownMetrics.macro.f1,perClass:knownMetrics.perClass,confusionMatrix:knownMetrics.confusionMatrix,unknownRejected:rejection.unknownRejected,leakage,filesPreserved:['src/engines/video-engine.js','src/engines/code-engine.js']},null,2));

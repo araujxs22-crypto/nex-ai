@@ -1,0 +1,3 @@
+NEX Core 0.1.0 — módulo independente gerado para integração posterior ao NEX AI.
+Sem dependências externas e sem chamadas a APIs pagas.
+O código é uma base experimental; resultados de planejamento não equivalem a geração de vídeo, compilação ou conhecimento geral abrangente.
