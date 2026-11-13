@@ -47,7 +47,7 @@ $('click').addEventListener('click', async () => {
     const result = await runOnPage((needle) => {
       const norm = value => String(value || '').replace(/\s+/g,' ').trim().toLocaleLowerCase();
       const wanted = norm(needle);
-      const candidates = [...document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')];
+      const candidates = [...document.querySelectorAll('a,[role="button"],button[type="button"],input[type="button"]')].filter(el => !(el instanceof HTMLButtonElement) || !el.form);
       const found = candidates.find(el => {
         const text = norm(el.innerText || el.value || el.getAttribute('aria-label') || el.title);
         const rect = el.getBoundingClientRect();
