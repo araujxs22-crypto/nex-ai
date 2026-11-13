@@ -233,35 +233,64 @@ export class TextVectorizer {
   constructor(labels, vocab) {
     this.labels = labels;
     this.vocab = vocab;
+    this.featureIndex = new Map(vocab.map((feature, index) => [feature, index]));
   }
 
   tokenize(text) {
     return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-z0-9_]+/g) || [];
   }
 
-  encode(text) {
+  featureTokens(text) {
     const tokens = this.tokenize(text);
-    const vector = Array(this.vocab.length).fill(0);
-    for (const token of tokens) {
-      const index = this.vocab.indexOf(token);
-      if (index >= 0) vector[index]++;
+    const features = tokens.map(token => `u:${token}`);
+
+    // Bigramas preservam a ordem e o contexto local de duas palavras consecutivas.
+    for (let i = 0; i < tokens.length - 1; i++) {
+      features.push(`b:${tokens[i]}_${tokens[i + 1]}`);
     }
-    const denominator = Math.max(tokens.length, 1);
+
+    return features;
+  }
+
+  encode(text) {
+    const features = this.featureTokens(text);
+    const vector = Array(this.vocab.length).fill(0);
+
+    for (const feature of features) {
+      const index = this.featureIndex.get(feature);
+      if (index !== undefined) vector[index]++;
+    }
+
+    const denominator = Math.max(features.length, 1);
     return vector.map(value => value / denominator);
   }
 
   recognizedRatio(text) {
+    // A cobertura continua sendo medida por palavras conhecidas; bigramas
+    // não penalizam uma frase válida apenas por uma combinação inédita.
     const tokens = this.tokenize(text);
     return tokens.length
-      ? tokens.filter(token => this.vocab.includes(token)).length / tokens.length
+      ? tokens.filter(token => this.featureIndex.has(`u:${token}`)).length / tokens.length
       : 0;
   }
 
   static fromExamples(examples) {
     const labels = [...new Set(examples.map(example => example.label))];
-    const vocab = [...new Set(examples.flatMap(example => (
-      example.text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-z0-9_]+/g) || []
-    )))];
+    const featureSet = new Set();
+
+    for (const example of examples) {
+      const tokens = example.text.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .match(/[a-z0-9_]+/g) || [];
+
+      for (const token of tokens) featureSet.add(`u:${token}`);
+      for (let i = 0; i < tokens.length - 1; i++) {
+        featureSet.add(`b:${tokens[i]}_${tokens[i + 1]}`);
+      }
+    }
+
+    const vocab = [...featureSet];
     return {vectorizer: new TextVectorizer(labels, vocab), labels};
   }
 }
