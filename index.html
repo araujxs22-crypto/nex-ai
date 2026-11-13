@@ -3,7 +3,11 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NEX AI — Núcleo Local</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.nexThreeReady = import('https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js')
+  .then(module => { window.THREE = module; return module; })
+  .catch(error => { console.warn('Falha ao carregar Three.js:', error); return null; });
+</script>
 <style>
 :root{--side:#1d1f24;--bg:#10121b;--txt:#edf0fa;--muted:#a4adbf;--stroke:#34394a;--accent:#8e83ff;--cyan:#61d7ee;--green:#60d6a4}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px Inter,Segoe UI,Arial,sans-serif}body{overflow:hidden}button,input,textarea{font:inherit}button{cursor:pointer}
@@ -18,7 +22,7 @@
 .content-area{position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column;padding:0 20px}.view{display:none;flex:1;min-height:0;flex-direction:column}.view.active{display:flex}
 .chat-scroll{flex:1;min-height:0;overflow-y:auto;padding:26px 0 14px;scroll-behavior:smooth}.hero{min-height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px 10px 5vh}.hero h1{font-size:34px;letter-spacing:-1.2px;font-weight:450;margin:0 0 12px}.hero h1 span{background:linear-gradient(90deg,#b8aaff,#6ddcf0);background-clip:text;color:transparent}.sub{color:#aab3c6;font-size:13px;margin:0 0 31px;text-align:center;line-height:1.55}
 .chat-stream{width:min(780px,96%);margin:0 auto;display:flex;flex-direction:column;gap:13px;padding:8px 0 22px}.message{padding:14px 18px;border-radius:16px;max-width:88%;line-height:1.6;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.message.user{background:#2a2e3b;align-self:flex-end;border:1px solid #3f4559;color:#fff}.message.nex{background:rgba(39,42,52,.92);align-self:flex-start;border:1px solid #45495b;color:#f3f4f8}.message .tag{display:block;color:#9d92ff;font-size:10px;letter-spacing:1px;margin-bottom:5px}
-.composer-dock{flex-shrink:0;padding:9px 0 19px;background:linear-gradient(180deg,transparent,rgba(16,18,27,.35))}.prompt{width:min(740px,96%);min-height:66px;border-radius:24px;border:1px solid #45495b;background:rgba(39,42,52,.97);display:flex;align-items:center;padding:9px 12px;gap:9px;box-shadow:0 12px 40px #0003;transition:.2s;margin:0 auto}.prompt:focus-within{border-color:#9286ff;box-shadow:0 0 0 3px #8b80ff20,0 15px 45px #0004}.add{width:39px;height:39px;flex-shrink:0;border:1px solid #454b5e;border-radius:13px;background:#34394a;color:#e5e8f2;font-size:23px;line-height:1;display:grid;place-items:center;cursor:pointer;padding:0}.add:hover{background:#494365;border-color:#8f83ff}.prompt textarea{flex:1;min-width:0;max-height:120px;min-height:32px;resize:none;border:0;outline:0;background:transparent;color:#f4f5fa;font-size:14px;padding:8px 4px;line-height:1.4}.prompt textarea::placeholder{color:#b6bdcc}.mode{border:0;background:transparent;color:#cbd1e0;font-size:12px;padding:9px;white-space:nowrap}.send{width:37px;height:37px;flex-shrink:0;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(140deg,#9385ff,#51cde6);color:#111522;font-size:18px;font-weight:800}.send:hover{filter:brightness(1.12)}.quick{display:flex;gap:9px;margin-top:17px;flex-wrap:wrap;justify-content:center}.chip{border:1px solid #464b60;background:#1d2334aa;color:#cbd3e7;border-radius:20px;padding:9px 13px;font-size:11px;cursor:pointer;transition:.2s}.chip:hover{background:#303653;border-color:#8176d9;color:white;transform:translateY(-2px)}.composer-hint{width:min(740px,96%);margin:7px auto 0;text-align:center;color:#75819a;font-size:10px}
+.composer-dock{flex-shrink:0;padding:9px 0 19px;background:linear-gradient(180deg,transparent,rgba(16,18,27,.35))}.prompt{width:min(740px,96%);min-height:66px;border-radius:24px;border:1px solid #45495b;background:rgba(39,42,52,.97);display:flex;align-items:center;padding:9px 12px;gap:9px;box-shadow:0 12px 40px #0003;transition:.2s;margin:0 auto}.prompt:focus-within{border-color:#9286ff;box-shadow:0 0 0 3px #8b80ff20,0 15px 45px #0004}.add{width:39px;height:39px;flex-shrink:0;border:1px solid #454b5e;border-radius:13px;background:#34394a;color:#e5e8f2;font-size:23px;line-height:1;display:grid;place-items:center;cursor:pointer;padding:0}.add:hover{background:#494365;border-color:#8f83ff}.add.listening{border-color:#e36b86;background:#572b42;box-shadow:0 0 0 3px #e36b8630}.prompt textarea{flex:1;min-width:0;max-height:120px;min-height:32px;resize:none;border:0;outline:0;background:transparent;color:#f4f5fa;font-size:14px;padding:8px 4px;line-height:1.4}.prompt textarea::placeholder{color:#b6bdcc}.mode{border:0;background:transparent;color:#cbd1e0;font-size:12px;padding:9px;white-space:nowrap}.send{width:37px;height:37px;flex-shrink:0;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(140deg,#9385ff,#51cde6);color:#111522;font-size:18px;font-weight:800}.send:hover{filter:brightness(1.12)}.quick{display:flex;gap:9px;margin-top:17px;flex-wrap:wrap;justify-content:center}.chip{border:1px solid #464b60;background:#1d2334aa;color:#cbd3e7;border-radius:20px;padding:9px 13px;font-size:11px;cursor:pointer;transition:.2s}.chip:hover{background:#303653;border-color:#8176d9;color:white;transform:translateY(-2px)}.composer-hint{width:min(740px,96%);margin:7px auto 0;text-align:center;color:#75819a;font-size:10px}
 .search-results-list{width:min(780px,96%);margin:0 auto;display:flex;flex-direction:column;gap:10px}.search-card{background:rgba(25,28,38,.94);border:1px solid #3f4559;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}.search-card-title{font-size:15px;font-weight:600;color:#aaa0ff;margin:0}.search-card-snippet{font-size:13px;color:#aab3c6;line-height:1.45;margin:0}.search-card-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.search-card-url{font-size:11px;color:#51cde6;text-decoration:none}.search-card-url:hover{text-decoration:underline}
 .subview{padding:22px 0 25px;overflow:auto;width:min(920px,100%);margin:0 auto}.page-title{font-size:24px;font-weight:600;margin:0 0 6px}.page-desc{color:#aab3c6;font-size:13px;line-height:1.5;margin:0 0 18px}.library-search{width:100%;background:rgba(39,42,52,.9);border:1px solid #45495b;border-radius:12px;padding:11px 14px;color:#fff;outline:0;margin-bottom:14px}.library-search:focus{border-color:#9286ff}.library-card{background:rgba(39,42,52,.9);border:1px solid #45495b;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}.library-card-head{display:flex;justify-content:space-between;align-items:start;gap:12px}.library-card h3{margin:0;color:#aaa0ff;font-size:15px}.library-card p{margin:0;color:#cbd3e7;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.meta{font-size:11px;color:#7f899f;display:flex;gap:14px;flex-wrap:wrap}.meta a{color:#51cde6;text-decoration:none}.btn-del{background:#883d4a;border:0;color:white;padding:6px 10px;border-radius:8px;font-size:11px}.card-actions{display:flex;gap:8px;flex-wrap:wrap}.secondary{border:1px solid #41485a;background:#252b3a;color:#dce3f5;border-radius:9px;padding:8px 11px;font-size:12px}.primary{border:0;border-radius:9px;background:linear-gradient(120deg,#9385ff,#55cde6);color:#101321;font-weight:750;padding:9px 13px;font-size:12px}.notice{border-left:3px solid #8d83ee;padding:10px 12px;background:#212236;color:#c6cce0;border-radius:0 8px 8px 0;font-size:12px;line-height:1.5;margin:12px 0}.muted{font-size:12px;color:#8f9bb2;line-height:1.5}.empty{padding:20px;border:1px dashed #3a4154;border-radius:12px;text-align:center;color:#8f9bb2;font-size:13px}
 .studio-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.studio-prompt{flex:1;min-width:200px;background:#202432;border:1px solid #444b5d;border-radius:10px;padding:9px 11px;color:#f0f2fb;outline:0}.studio-stage{height:min(65vh,600px);min-height:340px;position:relative;border-radius:15px;overflow:hidden;border:1px solid #34394a;background:radial-gradient(ellipse at 50% 60%,#27345e,#111621 70%)}#canvas3d{width:100%;height:100%;display:block}.stage-label{position:absolute;top:12px;left:13px;background:#111827bb;border:1px solid #3c4860;padding:7px 10px;border-radius:8px;color:#dce4f6;font-size:11px;pointer-events:none}.studio-help{margin-top:10px;color:#8390a8;font-size:11px}.particle-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#252a39;border:1px solid #4b5267;padding:10px 15px;border-radius:12px;color:#e7eaf5;box-shadow:0 8px 30px #0007;opacity:0;pointer-events:none;transition:.2s;z-index:20}.toast.show{opacity:1}
@@ -46,17 +50,17 @@
      <div class="hero" id="hero"><h1>Por onde começamos<span>?</span></h1><p class="sub">Um espaço para imaginar, aprender e construir.<br>Pesquise, estude e converse com o NEX.</p><div class="quick"><button class="chip" onclick="fill('Quero criar uma cena 3D')">◇ Criar em 3D</button><button class="chip" onclick="fill('pesquisar: processamento de linguagem natural')">⌕ Pesquisar na Web</button><button class="chip" onclick="switchTab('lib')">▤ Ver Biblioteca</button></div></div>
      <div class="chat-stream" id="chat-stream"></div>
     </div>
-    <div class="composer-dock" id="composer-dock"><div class="prompt"><button class="add" onclick="triggerWebSearchPrompt()" title="Pesquisar na internet">+</button><textarea id="msg" rows="1" placeholder="Pergunte ao NEX…" onkeydown="handleComposerKey(event)"></textarea><button class="mode" onclick="toast('Modo local ativo')">NEX Auto ⌄</button><button class="send" onclick="sendMsg()" title="Enviar">↑</button></div><div class="composer-hint">Enter envia · Shift + Enter quebra linha · Conhecimento salvo fica neste navegador</div></div>
+    <div class="composer-dock" id="composer-dock"><div class="prompt"><button class="add" onclick="triggerWebSearchPrompt()" title="Pesquisar na internet">+</button><button class="add voice-mic" id="voice-input" onclick="toggleVoiceInput()" title="Ditado por voz" aria-label="Ditado por voz">🎙</button><textarea id="msg" rows="1" placeholder="Pergunte ao NEX…" onkeydown="handleComposerKey(event)"></textarea><button class="mode" id="voice-output" onclick="toggleVoiceOutput()" title="Ativar ou desativar respostas faladas">🔇 Voz</button><button class="mode" onclick="toast('Modo local ativo')">NEX Auto ⌄</button><button class="send" onclick="sendMsg()" title="Enviar">↑</button></div><div class="composer-hint">Enter envia · Shift + Enter quebra linha · Conhecimento salvo fica neste navegador</div></div>
    </section>
    <section class="view" id="view-lib"><div class="subview"><h2 class="page-title">Biblioteca de Conhecimento</h2><p class="page-desc">Materiais pesquisados e guardados na memória persistente do NEX.</p><input id="lib-search" class="library-search" placeholder="Buscar por palavra-chave, título ou conteúdo…" oninput="filterLibrary()"><div id="lib-cards-container"></div></div></section>
-   <section class="view" id="view-studio"><div class="subview"><h2 class="page-title">NEX Studio 3D</h2><p class="page-desc">Laboratório procedural inicial. Adicione objetos ou descreva uma cena simples.</p><div class="studio-top"><input id="scene-prompt" class="studio-prompt" placeholder="Ex.: floresta à noite, cidade, robô, quarto…"><button class="primary" onclick="generateSceneFromPrompt()">Gerar cena</button><button class="secondary" onclick="spawnCube()">＋ Cubo</button><button class="secondary" onclick="spawnSphere()">＋ Esfera</button><button class="secondary" onclick="clearScene()">Limpar</button></div><div class="studio-stage"><div id="canvas3d"></div><div class="stage-label">NEX · VIEWPORT 3D</div></div><p class="studio-help">Arraste para girar a câmera · Scroll para aproximar/afastar · Objetos básicos nesta versão.</p></div></section>
+   <section class="view" id="view-studio"><div class="subview"><h2 class="page-title">NEX Studio 3D</h2><p class="page-desc">Planeje uma cena com o Video Engine, visualize objetos procedurais e exporte um clipe WebM da viewport.</p><div class="studio-top"><input id="scene-prompt" class="studio-prompt" placeholder="Ex.: nave e robô voando em uma cidade à noite…"><button class="primary" onclick="generateSceneFromPrompt()">Gerar cena com NEX</button><button class="secondary" onclick="recordSceneClip()">Exportar clipe WebM</button><button class="secondary" onclick="spawnCube()">＋ Cubo</button><button class="secondary" onclick="spawnSphere()">＋ Esfera</button><button class="secondary" onclick="clearScene()">Limpar</button></div><div class="studio-stage"><div id="canvas3d"></div><div class="stage-label">NEX · VIEWPORT 3D</div></div><p class="studio-help">Arraste para girar a câmera · Scroll para aproximar/afastar · O clipe grava a viewport sem áudio e baixa um arquivo WebM.</p></div></section>
   </div>
  </main>
 </div><div class="toast" id="toast"></div>
 <script>
 'use strict';
 const DB_NAME='NexAILocalDB_v2', DB_VERSION=2;
-let db=null, currentSessionId=newSessionId(), currentMessages=[], lastResearchResults=[];
+let db=null, currentSessionId=newSessionId(), currentMessages=[], lastResearchResults=[], speechRecognition=null, voiceOutputEnabled=false, threeLoadRequested=false, sceneAnimationStart=0;
 const $=id=>document.getElementById(id);
 function newSessionId(){return 'nex_'+Date.now()+'_'+Math.random().toString(36).slice(2,9)}
 function toast(text){const el=$('toast');el.textContent=text;el.classList.add('show');clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.classList.remove('show'),2300)}
@@ -79,7 +83,46 @@ function tokenize(s){const stop=new Set(['para','como','que','uma','umas','uns',
 function snippetFor(content,terms){const paras=String(content).split(/\n{1,}/).map(x=>x.trim()).filter(x=>x.length>45);const scored=paras.map(p=>({p,score:terms.reduce((n,t)=>n+(normalizeText(p).includes(t)?1:0),0)})).sort((a,b)=>b.score-a.score);return (scored.find(x=>x.score>0)?.p||paras[0]||content).slice(0,850)}
 async function retrieveKnowledge(question){if(!db)return[];const items=await reqPromise(db.transaction('knowledge','readonly').objectStore('knowledge').getAll());const terms=tokenize(question);if(!terms.length)return[];return items.map(item=>{const title=normalizeText(item.title),content=normalizeText(item.content);let score=0;for(const t of terms){if(title.includes(t))score+=4;if(content.includes(t))score+=1}return{item,score,ratio:score/(terms.length*2)}}).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3)}
 function localResponse(question,hits){const n=normalizeText(question);if(hits.length){return 'Encontrei estes materiais na memória do NEX:\n\n'+hits.map((h,i)=>`${i+1}. ${h.item.title}\n${snippetFor(h.item.content,tokenize(question))}\nFonte: ${h.item.url||'material local'}`).join('\n\n')+'\n\nEsta resposta foi montada a partir dos trechos recuperados. Ainda não existe um modelo neural de linguagem por trás do NEX; a recuperação atual usa correspondência de palavras-chave.'}if(/^(oi|ola|eai|bom dia|boa tarde|boa noite)\b/.test(n))return'Olá! Sou o NEX, em minha primeira versão local. Posso pesquisar artigos, guardar materiais na memória, recuperar conhecimentos e montar cenas 3D básicas. Ainda estou aprendendo a conversar: meu mecanismo atual usa regras simples e memória pesquisável.';if(n.includes('quem e voce'))return'Sou o NEX. Meu núcleo atual é uma aplicação local no navegador, com memória persistente, pesquisa de artigos e ferramentas 3D básicas. Ainda não sou um modelo neural treinado de forma independente.';if(n.includes('aprender')||n.includes('pesquisar'))return'Para pesquisar, escreva “pesquisar: assunto”. O NEX procura artigos na Wikipédia e apresenta cartões para você estudar e guardar cada resultado.';if(n.includes('3d')||n.includes('animacao')||n.includes('video'))return'Acesse o NEX Studio 3D pela barra lateral. Nesta versão você pode adicionar cubos e esferas, girar a câmera e criar uma cena simples a partir de palavras como floresta, cidade, quarto ou robô.';if(n.includes('memoria')||n.includes('biblioteca'))return'A memória é guardada no IndexedDB deste navegador. Abra Biblioteca para buscar e excluir materiais. Isso é recuperação de informações, não treinamento dos pesos de uma rede neural.';return'Não encontrei conhecimento suficiente na memória para responder com segurança. Pesquise o assunto usando “pesquisar: '+question+'” e salve os materiais relevantes. Depois poderei recuperar trechos associados à sua pergunta. Meu sistema de conversa ainda é básico e não inventa uma resposta quando não tem dados.'}
-async function sendMsg(){const input=$('msg');const text=input.value.trim();if(!text)return;input.value='';input.style.height='32px';switchTab('chat');appendMessage(text,'user');currentMessages.push({user:text,nex:''});const norm=text.toLowerCase();if(norm.startsWith('pesquisar:')||norm.startsWith('pesquisa ')){const q=text.replace(/^(pesquisar:|pesquisa)\s*/i,'').trim();appendMessage('Pesquisando artigos sobre “'+q+'”…','nex','PESQUISA');await performDeepResearch(q,text);return}let answer;try{await window.nexReady;const fenced=text.includes(String.fromCharCode(96).repeat(3));const codeLike=['const ','let ','function ','def ','class ','console.','<html','=>'].some(x=>text.includes(x));const response=fenced?{type:'code',result:window.nexCore.code.process(text)}:window.nexCore.ask(text);answer=window.formatNexResponse(response);if(response.type==='video-plan')$('scene-prompt').value=text;}catch(e){answer='Erro no NEX Core: '+e.message}appendMessage(answer,'nex','NEX CORE 0.3.0');await saveConversation(text,answer);currentMessages[currentMessages.length-1].nex=answer}
+async function sendMsg(){const input=$('msg');const text=input.value.trim();if(!text)return;input.value='';input.style.height='32px';switchTab('chat');appendMessage(text,'user');currentMessages.push({user:text,nex:''});const norm=text.toLowerCase();if(norm.startsWith('pesquisar:')||norm.startsWith('pesquisa ')){const q=text.replace(/^(pesquisar:|pesquisa)\s*/i,'').trim();appendMessage('Pesquisando artigos sobre “'+q+'”…','nex','PESQUISA');await performDeepResearch(q,text);return}let answer;try{await window.nexReady;const fenced=text.includes(String.fromCharCode(96).repeat(3));const codeLike=['const ','let ','function ','def ','class ','console.','<html','=>'].some(x=>text.includes(x));const response=fenced?{type:'code',result:window.nexCore.code.process(text)}:window.nexCore.ask(text);answer=window.formatNexResponse(response);if(response.type==='video-plan'){$('scene-prompt').value=text;window.nexLastVideoPlan=response.result;}}catch(e){answer='Erro no NEX Core: '+e.message}appendMessage(answer,'nex','NEX CORE 0.4.0');speakReply(answer);await saveConversation(text,answer);currentMessages[currentMessages.length-1].nex=answer}
+
+function toggleVoiceInput(){
+  const SpeechAPI=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechAPI){toast('Este navegador não oferece reconhecimento de voz. Use o Chrome ou digite a mensagem.');return}
+  if(speechRecognition){try{speechRecognition.stop()}catch{}speechRecognition=null;return}
+  const recognition=new SpeechAPI();
+  speechRecognition=recognition;
+  recognition.lang='pt-BR';
+  recognition.continuous=false;
+  recognition.interimResults=true;
+  const input=$('msg'),base=input.value.trim();
+  recognition.onstart=()=>{$('voice-input')?.classList.add('listening');toast('Ouvindo…')};
+  recognition.onresult=e=>{
+    let transcript='';
+    for(let i=e.resultIndex;i<e.results.length;i++)transcript+=e.results[i][0].transcript;
+    input.value=[base,transcript].filter(Boolean).join(base?' ':'');
+    input.style.height='32px';
+    input.style.height=Math.min(input.scrollHeight,120)+'px';
+  };
+  recognition.onerror=e=>toast('Falha no microfone: '+(e.error||'erro desconhecido'));
+  recognition.onend=()=>{$('voice-input')?.classList.remove('listening');if(speechRecognition===recognition)speechRecognition=null};
+  try{recognition.start()}catch(error){speechRecognition=null;toast('Não foi possível iniciar o microfone: '+error.message)}
+}
+function toggleVoiceOutput(){
+  voiceOutputEnabled=!voiceOutputEnabled;
+  const button=$('voice-output');
+  if(button)button.textContent=voiceOutputEnabled?'🔊 Voz':'🔇 Voz';
+  if(!voiceOutputEnabled&&window.speechSynthesis)window.speechSynthesis.cancel();
+  toast(voiceOutputEnabled?'Respostas faladas ativadas':'Respostas faladas desativadas');
+}
+function speakReply(text){
+  if(!voiceOutputEnabled||!window.speechSynthesis||typeof SpeechSynthesisUtterance==='undefined')return;
+  window.speechSynthesis.cancel();
+  const utterance=new SpeechSynthesisUtterance(String(text||'').slice(0,2500));
+  utterance.lang='pt-BR';
+  utterance.rate=1;
+  window.speechSynthesis.speak(utterance);
+}
+
 inputAutoResize();function inputAutoResize(){$('msg').addEventListener('input',e=>{e.target.style.height='32px';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px'})}
 function makeSearchCard(item,index){const card=document.createElement('article');card.className='search-card';const title=document.createElement('h3');title.className='search-card-title';title.textContent=item.title;const snippet=document.createElement('p');snippet.className='search-card-snippet';snippet.textContent=item.snippet;const actions=document.createElement('div');actions.className='search-card-actions';const link=document.createElement('a');link.className='search-card-url';link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Ver artigo fonte ↗';const button=document.createElement('button');button.className='topbtn primary';button.textContent='📖 Estudar e salvar';button.onclick=()=>studyArticle(item,button);actions.append(link,button);card.append(title,snippet,actions);return card}
 async function performDeepResearch(query,userText){try{if(!query){appendMessage('Digite um assunto depois de “pesquisar:”.','nex');return}const url='https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&format=json&origin=*&srlimit=5';const res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();const hits=data.query?.search||[];if(!hits.length){const msg='Não encontrei artigos para “'+query+'”. Tente termos mais específicos.';appendMessage(msg,'nex');await saveConversation(userText,msg);return}lastResearchResults=[];for(const hit of hits.slice(0,5)){const pageUrl='https://pt.wikipedia.org/?curid='+hit.pageid;lastResearchResults.push({title:hit.title,pageId:hit.pageid,url:pageUrl,snippet:hit.snippet.replace(/<[^>]*>/g,'')})}const intro='Encontrei '+lastResearchResults.length+' artigos. Cada botão “Estudar e salvar” busca o texto disponível da página e guarda na memória local.';appendMessage(intro,'nex','RESULTADOS DA PESQUISA');const cards=document.createElement('div');cards.className='search-results-list';lastResearchResults.forEach((item,i)=>cards.appendChild(makeSearchCard(item,i)));$('chat-stream').appendChild(cards);$('chat-scroll').scrollTop=$('chat-scroll').scrollHeight;await saveConversation(userText,intro+' Resultados: '+lastResearchResults.map(x=>x.title+' — '+x.url).join('; '))}catch(e){console.error(e);const msg='Não consegui pesquisar agora. Verifique a internet e tente novamente. ('+e.message+')';appendMessage(msg,'nex');await saveConversation(userText,msg)}}
@@ -97,22 +140,238 @@ function triggerWebSearchPrompt(){const q=prompt('Qual assunto o NEX deve pesqui
 
 // Three.js local no navegador: sem dependência de OrbitControls externo.
 let scene3d,camera3d,renderer3d,objects3d=[],threeReady=false,threeRAF=0,dragging=false,lastX=0,lastY=0,orbit={theta:.7,phi:1.12,radius:9},target3d={x:0,y:0.8,z:0};
-function initThreeJS(){if(!window.THREE){toast('Three.js não carregou. É preciso internet para este módulo.');return}const box=$('canvas3d');if(threeReady){resizeThree();startThree();return}try{scene3d=new THREE.Scene();scene3d.background=new THREE.Color(0x0d111b);scene3d.fog=new THREE.Fog(0x0d111b,20,60);camera3d=new THREE.PerspectiveCamera(55,1,.1,100);renderer3d=new THREE.WebGLRenderer({antialias:false,alpha:false});renderer3d.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));box.appendChild(renderer3d.domElement);scene3d.add(new THREE.HemisphereLight(0xb5caff,0x263047,1.2));const light=new THREE.DirectionalLight(0xffffff,1.5);light.position.set(7,10,6);scene3d.add(light);const grid=new THREE.GridHelper(30,30,0x58678c,0x303c58);grid.position.y=-.03;scene3d.add(grid);const floor=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0x151b29,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.05;scene3d.add(floor);addCubeAt(0,1,0,0x8e83ff);wireThreeInput(renderer3d.domElement);threeReady=true;resizeThree();startThree()}catch(e){console.error(e);toast('Falha ao iniciar o laboratório 3D: '+e.message)}}
+function initThreeJS(){
+ if(!window.THREE){
+  if(window.nexThreeReady&&!threeLoadRequested){
+   threeLoadRequested=true;toast('Carregando motor 3D…');
+   window.nexThreeReady.then(module=>{threeLoadRequested=false;if(module)initThreeJS();else toast('Não foi possível carregar o motor 3D')});
+  }else if(!window.nexThreeReady)toast('Motor 3D indisponível neste navegador');
+  return;
+ }
+ const THREE=window.THREE;
+ const box=$('canvas3d');
+ if(threeReady){resizeThree();startThree();return}
+ try{
+  scene3d=new THREE.Scene();
+  scene3d.background=new THREE.Color(0x0d111b);
+  scene3d.fog=new THREE.Fog(0x0d111b,20,60);
+  camera3d=new THREE.PerspectiveCamera(55,1,.1,100);
+  renderer3d=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:'low-power'});
+  renderer3d.setPixelRatio(Math.min(window.devicePixelRatio||1,1.1));
+  box.appendChild(renderer3d.domElement);
+  scene3d.add(new THREE.HemisphereLight(0xb5caff,0x263047,1.2));
+  const light=new THREE.DirectionalLight(0xffffff,1.3);light.position.set(7,10,6);scene3d.add(light);
+  const grid=new THREE.GridHelper(30,30,0x58678c,0x303c58);grid.position.y=-.03;scene3d.add(grid);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0x151b29,roughness:1}));
+  floor.rotation.x=-Math.PI/2;floor.position.y=-.05;scene3d.add(floor);
+  addCubeAt(0,1,0,0x8e83ff);
+  wireThreeInput(renderer3d.domElement);
+  threeReady=true;resizeThree();startThree();
+ }catch(error){console.error(error);toast('Falha ao iniciar o laboratório 3D: '+error.message)}
+}
 function wireThreeInput(el){el.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;el.setPointerCapture?.(e.pointerId)});el.addEventListener('pointermove',e=>{if(!dragging)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;orbit.theta-=dx*.008;orbit.phi=Math.max(.2,Math.min(2.85,orbit.phi+dy*.008));updateCamera()});el.addEventListener('pointerup',()=>dragging=false);el.addEventListener('pointercancel',()=>dragging=false);el.addEventListener('wheel',e=>{e.preventDefault();orbit.radius=Math.max(3,Math.min(26,orbit.radius+e.deltaY*.012));updateCamera()},{passive:false})}
 function updateCamera(){if(!camera3d)return;camera3d.position.set(target3d.x+orbit.radius*Math.sin(orbit.phi)*Math.sin(orbit.theta),target3d.y+orbit.radius*Math.cos(orbit.phi),target3d.z+orbit.radius*Math.sin(orbit.phi)*Math.cos(orbit.theta));camera3d.lookAt(target3d.x,target3d.y,target3d.z)}
 function resizeThree(){if(!renderer3d||!camera3d)return;const el=$('canvas3d'),w=Math.max(1,el.clientWidth),h=Math.max(1,el.clientHeight);renderer3d.setSize(w,h,false);camera3d.aspect=w/h;camera3d.updateProjectionMatrix();updateCamera()}
-function startThree(){if(threeRAF||!threeReady)return;const loop=()=>{if(!$('view-studio').classList.contains('active')){threeRAF=0;return}threeRAF=requestAnimationFrame(loop);for(const o of objects3d){if(o.userData.spin){o.rotation.y+=.004;o.rotation.x+=.0015}}renderer3d.render(scene3d,camera3d)};threeRAF=requestAnimationFrame(loop)}
+function startThree(){
+ if(threeRAF||!threeReady)return;
+ sceneAnimationStart=performance.now();
+ const loop=()=>{
+  if(!$('view-studio').classList.contains('active')){threeRAF=0;return}
+  threeRAF=requestAnimationFrame(loop);
+  const elapsed=(performance.now()-sceneAnimationStart)/1000;
+  for(const object of objects3d){
+   const type=object.userData.animationType;
+   const base=object.userData.basePosition;
+   if(object.userData.spin||type==='spin'){object.rotation.y+=.008;object.rotation.x+=.0015}
+   else if(type==='float'&&base)object.position.y=base.y+Math.sin(elapsed*2+object.userData.phase)*.22;
+   else if(type==='walk-cycle'&&base)object.position.x=base.x+Math.sin(elapsed*2.5+object.userData.phase)*.3;
+   else if(type==='move-forward'&&base)object.position.z=base.z-Math.min(elapsed*.35,1.2);
+  }
+  if(window.nexLastVideoPlan?.camera?.motion==='pan'){orbit.theta+=.0018;updateCamera()}
+  renderer3d.render(scene3d,camera3d);
+ };
+ threeRAF=requestAnimationFrame(loop);
+}
 function stopThreeJS(){if(threeRAF){cancelAnimationFrame(threeRAF);threeRAF=0}}
-function addCubeAt(x,y,z,color){const mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color,roughness:.55,metalness:.2}));mesh.position.set(x,y,z);mesh.userData.spin=true;scene3d.add(mesh);objects3d.push(mesh);return mesh}
+function trackSceneObject(object,animationType=null){
+ object.userData.animationType=animationType||'none';
+ object.userData.basePosition=object.position.clone();
+ object.userData.phase=Math.random()*Math.PI*2;
+ if(animationType==='spin')object.userData.spin=true;
+ scene3d.add(object);objects3d.push(object);return object;
+}
+function addCubeAt(x,y,z,color){
+ const THREE=window.THREE;
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color,roughness:.55,metalness:.2}));
+ mesh.position.set(x,y,z);mesh.userData.spin=true;scene3d.add(mesh);objects3d.push(mesh);return mesh;
+}
+function createTreeGroup(){
+ const THREE=window.THREE,group=new THREE.Group();
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12,.16,1.1,6),new THREE.MeshStandardMaterial({color:0x76533b}));
+ trunk.position.y=.55;
+ const crown=new THREE.Mesh(new THREE.ConeGeometry(.75,1.8,7),new THREE.MeshStandardMaterial({color:0x39795b}));
+ crown.position.y=1.9;group.add(trunk,crown);return group;
+}
+function createCharacterGroup(isRobot=false){
+ const THREE=window.THREE,group=new THREE.Group();
+ const bodyColor=isRobot?0x7189b8:0x4c83c5,limbColor=isRobot?0x56617c:0x263c65;
+ const body=new THREE.Mesh(new THREE.BoxGeometry(.85,1.05,.48),new THREE.MeshStandardMaterial({color:bodyColor,roughness:.6}));
+ body.position.y=1.15;group.add(body);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.42,16,12),new THREE.MeshStandardMaterial({color:isRobot?0xc6d5ec:0xf0c8a8}));
+ head.position.y=2;group.add(head);
+ for(const x of [-.58,.58]){
+  const arm=new THREE.Mesh(new THREE.BoxGeometry(.22,.85,.24),new THREE.MeshStandardMaterial({color:limbColor}));
+  arm.position.set(x,1.2,0);group.add(arm);
+  const leg=new THREE.Mesh(new THREE.BoxGeometry(.27,.8,.3),new THREE.MeshStandardMaterial({color:limbColor}));
+  leg.position.set(x*.55,.32,0);group.add(leg);
+ }
+ return group;
+}
+function createSpaceshipGroup(){
+ const THREE=window.THREE,group=new THREE.Group();
+ const metal=new THREE.MeshStandardMaterial({color:0xaabbd5,metalness:.72,roughness:.28});
+ const accent=new THREE.MeshStandardMaterial({color:0x55cce8,metalness:.35,roughness:.25,emissive:0x123344});
+ const hull=new THREE.Mesh(new THREE.SphereGeometry(.55,20,14),metal);hull.scale.set(1.8,.42,.62);group.add(hull);
+ const cockpit=new THREE.Mesh(new THREE.SphereGeometry(.28,16,12),accent);cockpit.position.set(.18,.22,0);cockpit.scale.set(.9,.7,.8);group.add(cockpit);
+ for(const side of [-1,1]){
+  const wing=new THREE.Mesh(new THREE.BoxGeometry(.9,.08,.62),metal);wing.position.set(-.15,-.02,side*.52);wing.rotation.y=side*.16;group.add(wing);
+  const engine=new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,.35,12),accent);engine.rotation.x=Math.PI/2;engine.position.set(-.55,-.03,side*.36);group.add(engine);
+ }
+ return group;
+}
+function clearScene(){
+ if(!threeReady)return;
+ for(const root of objects3d){
+  scene3d.remove(root);
+  root.traverse?.(node=>{
+   if(node.geometry)node.geometry.dispose();
+   if(Array.isArray(node.material))node.material.forEach(material=>material.dispose());
+   else node.material?.dispose();
+  });
+ }
+ objects3d=[];window.nexLastVideoPlan=null;toast('Cena limpa');
+}
 function spawnCube(){if(!threeReady){initThreeJS();if(!threeReady)return}addCubeAt((Math.random()-.5)*4,.5,(Math.random()-.5)*4,Math.random()*0xffffff);startThree();toast('Cubo adicionado')}
 function spawnSphere(){if(!threeReady){initThreeJS();if(!threeReady)return}const mesh=new THREE.Mesh(new THREE.SphereGeometry(.62,18,14),new THREE.MeshStandardMaterial({color:Math.random()*0xffffff,roughness:.35,metalness:.25}));mesh.position.set((Math.random()-.5)*4,.65,(Math.random()-.5)*4);mesh.userData.spin=true;scene3d.add(mesh);objects3d.push(mesh);startThree();toast('Esfera adicionada')}
-function addTree(x,z){const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12,.16,1.1,6),new THREE.MeshStandardMaterial({color:0x76533b}));trunk.position.set(x,.55,z);const crown=new THREE.Mesh(new THREE.ConeGeometry(.75,1.8,7),new THREE.MeshStandardMaterial({color:0x39795b}));crown.position.set(x,1.9,z);scene3d.add(trunk,crown);objects3d.push(trunk,crown)}
+function addTree(x,z){const group=createTreeGroup();group.position.set(x,0,z);trackSceneObject(group);}
 function clearScene(){if(!threeReady)return;for(const o of objects3d){scene3d.remove(o);o.geometry?.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose()}objects3d=[];toast('Cena limpa')}
-function generateSceneFromPrompt(){if(!threeReady)initThreeJS();if(!threeReady)return;const q=normalizeText($('scene-prompt').value);if(!q){toast('Descreva uma cena primeiro');return}clearScene();if(q.includes('floresta')||q.includes('bosque')||q.includes('arvore')||q.includes('natureza')){for(let i=0;i<28;i++){const x=(Math.random()-.5)*15,z=(Math.random()-.5)*15;if(Math.hypot(x,z)>1.6)addTree(x,z)}}else if(q.includes('cidade')||q.includes('predio')||q.includes('urbano')){for(let x=-7;x<=7;x+=2.5)for(let z=-5;z<=5;z+=3.5){const h=2+Math.random()*5;const b=new THREE.Mesh(new THREE.BoxGeometry(1.5,h,1.7),new THREE.MeshStandardMaterial({color:[0x52627f,0x69718c,0x465b78][Math.floor(Math.random()*3)]}));b.position.set(x,h/2,z);scene3d.add(b);objects3d.push(b)}}else if(q.includes('robo')||q.includes('personagem')||q.includes('boneco')){addCubeAt(0,1,0,0x7189b8);const head=new THREE.Mesh(new THREE.SphereGeometry(.55,12,10),new THREE.MeshStandardMaterial({color:0xc6d5ec}));head.position.y=2;scene3d.add(head);objects3d.push(head);for(const x of [-.5,.5]){const leg=new THREE.Mesh(new THREE.BoxGeometry(.25,.9,.3),new THREE.MeshStandardMaterial({color:0x56617c}));leg.position.set(x,.25,0);scene3d.add(leg);objects3d.push(leg)}}else{addCubeAt(0,.5,0,0x8e83ff);spawnSphere()}orbit={theta:.7,phi:1.12,radius:10};updateCamera();startThree();toast('Cena procedural criada')}
+function createCityGroup(){
+ const THREE=window.THREE,group=new THREE.Group(),colors=[0x52627f,0x69718c,0x465b78,0x7886a3];
+ for(let x=-6;x<=6;x+=2.5)for(let z=-4;z<=4;z+=3.5){
+  const height=2+Math.random()*4.5;
+  const building=new THREE.Mesh(new THREE.BoxGeometry(1.5,height,1.7),new THREE.MeshStandardMaterial({color:colors[Math.floor(Math.random()*colors.length)],roughness:.8}));
+  building.position.set(x,height/2,z);group.add(building);
+ }
+ return group;
+}
+function createForestGroup(){
+ const group=new THREE.Group();
+ for(let i=0;i<22;i++){
+  const tree=createTreeGroup();
+  const angle=i*2.399,radius=2.2+(i%5)*.85;
+  tree.position.set(Math.cos(angle)*radius,0,Math.sin(angle)*radius);
+  tree.scale.setScalar(.75+(i%4)*.12);group.add(tree);
+ }
+ return group;
+}
+function createCarGroup(){
+ const THREE=window.THREE,group=new THREE.Group();
+ const body=new THREE.Mesh(new THREE.BoxGeometry(2,.55,1),new THREE.MeshStandardMaterial({color:0x3475d2,metalness:.35,roughness:.35}));
+ body.position.y=.65;group.add(body);
+ const cabin=new THREE.Mesh(new THREE.BoxGeometry(.95,.48,.82),new THREE.MeshStandardMaterial({color:0x9ac8df,metalness:.2,roughness:.2}));
+ cabin.position.set(-.1,1.12,0);group.add(cabin);
+ for(const x of [-.65,.65])for(const z of [-.48,.48]){
+  const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.14,14),new THREE.MeshStandardMaterial({color:0x171b25}));
+  wheel.rotation.x=Math.PI/2;wheel.position.set(x,.35,z);group.add(wheel);
+ }
+ return group;
+}
+function createHouseGroup(){
+ const THREE=window.THREE,group=new THREE.Group();
+ const base=new THREE.Mesh(new THREE.BoxGeometry(2.2,1.6,1.8),new THREE.MeshStandardMaterial({color:0xc4a47b}));
+ base.position.y=.8;group.add(base);
+ const roof=new THREE.Mesh(new THREE.ConeGeometry(1.65,.9,4),new THREE.MeshStandardMaterial({color:0x754b48}));
+ roof.rotation.y=Math.PI/4;roof.position.y=2.05;group.add(roof);return group;
+}
+function renderVideoPlan(plan){
+ if(!window.THREE){toast('Motor 3D ainda está carregando');return}
+ if(!threeReady)initThreeJS();
+ if(!threeReady)return;
+ clearScene();
+ const THREE=window.THREE;
+ const env=plan?.scene?.environment||'day';
+ const colors={night:0x070d20,sunset:0x351d35,space:0x03040d,day:0x0d111b};
+ scene3d.background=new THREE.Color(colors[env]??colors.day);
+ if(scene3d.fog)scene3d.fog.color=scene3d.background;
+ for(const spec of plan?.scene?.objects||[]){
+  let object;
+  switch(spec.type){
+   case 'spaceship':object=createSpaceshipGroup();break;
+   case 'robot':object=createCharacterGroup(true);break;
+   case 'character':object=createCharacterGroup(false);break;
+   case 'city':object=createCityGroup();break;
+   case 'forest':object=createForestGroup();break;
+   case 'tree':object=createTreeGroup();break;
+   case 'car':object=createCarGroup();break;
+   case 'house':object=createHouseGroup();break;
+   case 'building':object=createCityGroup();object.scale.setScalar(.65);break;
+   case 'planet':object=new THREE.Mesh(new THREE.SphereGeometry(1.2,24,18),new THREE.MeshStandardMaterial({color:0x6278bd,roughness:.9}));break;
+   default:object=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color:0x8e83ff,roughness:.55}));
+  }
+  const transform=spec.transform||{};
+  const position=transform.position||[0,.7,0],rotation=transform.rotation||[0,0,0],scale=transform.scale||[1,1,1];
+  object.position.set(position[0]||0,position[1]||0,position[2]||0);
+  object.rotation.set(rotation[0]||0,rotation[1]||0,rotation[2]||0);
+  object.scale.multiply(new THREE.Vector3(scale[0]||1,scale[1]||1,scale[2]||1));
+  trackSceneObject(object,spec.animation?.type||null);
+ }
+ const shot=plan?.camera?.shot||'medium';
+ orbit={theta:.7,phi:shot==='close-up'?.98:1.12,radius:shot==='wide'?17:shot==='close-up'?6.5:10};
+ target3d={x:0,y:.8,z:0};updateCamera();
+ window.nexLastVideoPlan=plan;startThree();
+ toast('Cena procedural criada a partir do plano v2');
+}
+async function generateSceneFromPrompt(){
+ const prompt=$('scene-prompt').value.trim();
+ if(!prompt){toast('Descreva uma cena primeiro');return}
+ try{
+  if(window.nexThreeReady)await window.nexThreeReady;
+  if(!window.THREE){toast('Não foi possível carregar o motor 3D');return}
+  if(!threeReady)initThreeJS();
+  if(!threeReady)return;
+  await window.nexReady;
+  const plan=window.nexCore.video.plan(prompt);
+  renderVideoPlan(plan);
+ }catch(error){console.error(error);toast('Falha ao gerar cena: '+error.message)}
+}
+function recordSceneClip(){
+ if(!renderer3d||!renderer3d.domElement?.captureStream){toast('Captura de vídeo não é suportada neste navegador');return}
+ if(typeof MediaRecorder==='undefined'){toast('MediaRecorder não está disponível neste navegador');return}
+ if(!$('view-studio').classList.contains('active')){toast('Abra o Studio 3D antes de exportar');return}
+ const canvas=renderer3d.domElement,stream=canvas.captureStream(24);
+ const mimeTypes=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+ const mimeType=mimeTypes.find(type=>MediaRecorder.isTypeSupported(type));
+ const recorder=new MediaRecorder(stream,mimeType?{mimeType,videoBitsPerSecond:1600000}:{videoBitsPerSecond:1600000});
+ const chunks=[];
+ recorder.ondataavailable=event=>{if(event.data?.size)chunks.push(event.data)};
+ recorder.onerror=event=>{stream.getTracks().forEach(track=>track.stop());toast('Falha ao gravar o clipe: '+(event.error?.message||'erro'))};
+ recorder.onstop=()=>{
+  const blob=new Blob(chunks,{type:recorder.mimeType||'video/webm'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='nex-scene-'+Date.now()+'.webm';link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  stream.getTracks().forEach(track=>track.stop());
+  toast('Clipe WebM exportado');
+ };
+ const requested=Number(window.nexLastVideoPlan?.durationSeconds)||8;
+ const duration=Math.max(3,Math.min(20,requested));
+ recorder.start(250);toast('Gravando a viewport por '+duration+' segundos…');
+ setTimeout(()=>{if(recorder.state==='recording')recorder.stop()},duration*1000);
+}
 window.addEventListener('resize',()=>{resizeParticles();resizeThree()});
 
 // 2.000 micro-partículas distribuídas por toda a área principal.
-const particleCanvas=$('particleCanvas'),pctx=particleCanvas.getContext('2d',{alpha:true});let dots=[],cw=0,ch=0,particleRAF=0;const DOT_COUNT=2000,reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const particleCanvas=$('particleCanvas'),pctx=particleCanvas.getContext('2d',{alpha:true});let dots=[],cw=0,ch=0,particleRAF=0;const DOT_COUNT=((navigator.hardwareConcurrency||8)<=4||(navigator.deviceMemory||8)<=4)?480:1100,reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function buildParticles(){dots=[];const cols=Math.max(1,Math.ceil(Math.sqrt(DOT_COUNT*(cw/Math.max(ch,1))))),rows=Math.ceil(DOT_COUNT/cols),cellW=cw/cols,cellH=ch/rows;for(let i=0;i<DOT_COUNT;i++){const col=i%cols,row=Math.floor(i/cols);dots.push({x:(col+.1+Math.random()*.8)*cellW,y:(row+.1+Math.random()*.8)*cellH,r:.28+Math.random()*.38,a:.08+Math.random()*.15,vx:(Math.random()-.5)*.028,vy:(Math.random()-.5)*.028,phase:Math.random()*Math.PI*2})}}
 function resizeParticles(){const r=$('main').getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,1.25);cw=Math.max(1,r.width);ch=Math.max(1,r.height);particleCanvas.width=Math.round(cw*dpr);particleCanvas.height=Math.round(ch*dpr);particleCanvas.style.width=cw+'px';particleCanvas.style.height=ch+'px';pctx.setTransform(dpr,0,0,dpr,0,0);buildParticles()}
 function drawParticles(t=0){pctx.clearRect(0,0,cw,ch);for(const d of dots){if(!reduceMotion){d.x+=d.vx;d.y+=d.vy;if(d.x<0)d.x+=cw;if(d.x>cw)d.x-=cw;if(d.y<0)d.y+=ch;if(d.y>ch)d.y-=ch}const pulse=.76+Math.sin(t*.0005+d.phase)*.24;pctx.beginPath();pctx.arc(d.x,d.y,d.r,0,Math.PI*2);pctx.fillStyle=`rgba(147,181,255,${d.a*pulse})`;pctx.fill()}if(!reduceMotion)particleRAF=requestAnimationFrame(drawParticles)}
@@ -128,12 +387,12 @@ const status = document.getElementById('nex-core-status');
 window.formatNexResponse = (r) => {
  if (!r) return 'Core sem resposta.';
  if (r.type === 'clarification' || r.type === 'chat') return r.text;
- if (r.type === 'video-plan') return 'VIDEO ENGINE 0.3.0 — PLANO DE CENA\n' + JSON.stringify(r.result,null,2) + '\n\nO motor planeja; ainda não gera o vídeo final.';
+ if (r.type === 'video-plan') return 'VIDEO ENGINE 0.4.0 — PLANO DE CENA\n' + JSON.stringify(r.result,null,2) + '\n\nO motor planeja; ainda não gera o vídeo final.';
  if (r.type === 'memory') return 'Memória salva. ' + JSON.stringify(r.result);
  if (r.type === 'memory-search') return 'Busca na memória: ' + JSON.stringify(r.result);
  if (r.type === 'code') {
   const x=r.result;
-  if(x.type==='analysis') return 'CODE ENGINE 0.3.0 — '+x.result.language+'\n'+x.result.summary+'\n'+x.result.diagnostics.map(d=>'['+d.severity+'] L'+d.line+': '+d.message+' '+d.suggestion).join('\n')+'\nTestes: '+x.result.testPlan.command;
+  if(x.type==='analysis') return 'CODE ENGINE 0.4.0 — '+x.result.language+'\n'+x.result.summary+'\n'+x.result.diagnostics.map(d=>'['+d.severity+'] L'+d.line+': '+d.message+' '+d.suggestion).join('\n')+'\nTestes: '+x.result.testPlan.command;
   if(x.type==='scaffold') return 'Projeto '+x.language+' preparado. Arquivos: '+x.files.join(', ')+'\nTeste: '+x.testCommand+'\n'+JSON.stringify(x.fileContents,null,2)+'\nArquivos preparados em memória, não gravados no computador.';
  }
  return JSON.stringify(r,null,2);

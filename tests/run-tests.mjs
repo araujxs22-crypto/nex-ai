@@ -3,7 +3,7 @@ import {mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync} from 'node:
 import {tmpdir} from 'node:os';
 import {join, dirname} from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
-import {NexCore, TinyMLP} from '../src/index.js';
+import {NexCore, TinyMLP, NexMemory} from '../src/index.js';
 import {NexCodeEngine} from '../src/engines/code-engine.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
@@ -11,6 +11,31 @@ import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UN
 
 
 const codeEngine = new NexCodeEngine();
+
+const checkpointModel = new TinyMLP({inputSize: 1, hiddenSize: 2, outputSize: 2});
+const detachedCheckpoint = checkpointModel.toJSON();
+const originalWeight = detachedCheckpoint.W1[0][0];
+checkpointModel.W1[0][0] += 10;
+assert.equal(detachedCheckpoint.W1[0][0], originalWeight, 'toJSON deve devolver pesos independentes');
+assert.throws(() => checkpointModel.train([{x: [0], y: 0}], {batchSize: 0}), /batchSize/);
+assert.throws(() => checkpointModel.train([{x: [0], y: 2}]), /exemplo inválido/);
+assert.throws(() => checkpointModel.train([]), /vazio/);
+
+const memoryBacking = new Map();
+const memoryStorage = {
+  getItem(key) { return memoryBacking.has(key) ? memoryBacking.get(key) : null; },
+  setItem(key, value) { memoryBacking.set(key, String(value)); }
+};
+const hardenedMemory = new NexMemory({key: 'reliability-test', storage: memoryStorage, maxItems: 3});
+const remembered = hardenedMemory.remember('Uma cena espacial com uma nave', {title: 'Projeto espacial', tags: ['3D']});
+assert.equal(hardenedMemory.search('projeto espacial')[0].id, remembered.id, 'busca deve considerar título e texto');
+assert.throws(() => hardenedMemory.remember('   '), /vazia/);
+assert.equal(hardenedMemory.import(hardenedMemory.export()), 1);
+assert.throws(() => hardenedMemory.import('{quebrado'), /JSON corrompido/);
+const quotaMemory = new NexMemory({storage: {getItem: () => null, setItem: () => { throw new Error('quota'); }}});
+assert.throws(() => quotaMemory.remember('não deve confirmar gravação'), /persistir/);
+assert.equal(quotaMemory.all().length, 0, 'falha de persistência deve reverter a memória em RAM');
+
 
 const validJs = codeEngine.analyze(
   'const total = 3;\nif (total === 3) {\n  console.log("ok");\n}',
@@ -61,6 +86,29 @@ const fence = String.fromCharCode(96).repeat(3);
 const fencedRequest = codeEngine.process('Analise este trecho:\n' + fence + 'javascript\nconst count;\n' + fence);
 assert.equal(fencedRequest.type, 'analysis');
 assert.ok(fencedRequest.result.diagnostics.some(item => item.code === 'JS_CONST_WITHOUT_INITIALIZER'));
+
+
+const websiteScaffold = codeEngine.scaffold('crie um site responsivo para uma barbearia');
+assert.equal(websiteScaffold.kind, 'website');
+assert.ok(websiteScaffold.fileContents['index.html'].includes('Apresente uma barbearia'));
+assert.ok(websiteScaffold.fileContents['styles.css'].includes('@media'));
+assert.ok(websiteScaffold.fileContents['src/main.js'].includes('initializeSite'));
+assert.ok(websiteScaffold.fileContents['tests/main.test.js']);
+const websiteScaffoldDir = mkdtempSync(join(tmpdir(), 'nex-website-scaffold-'));
+try {
+  for (const [filePath, content] of Object.entries(websiteScaffold.fileContents)) {
+    const absolutePath = join(websiteScaffoldDir, filePath);
+    mkdirSync(dirname(absolutePath), {recursive: true});
+    writeFileSync(absolutePath, content, 'utf8');
+  }
+  const websiteTestOutput = execFileSync(process.execPath, ['--test'], {
+    cwd: websiteScaffoldDir,
+    encoding: 'utf8'
+  });
+  assert.match(websiteTestOutput, /# pass 2/, 'os testes do site gerado devem passar');
+} finally {
+  rmSync(websiteScaffoldDir, {recursive: true, force: true});
+}
 
 const jsScaffold = codeEngine.scaffold('crie um projeto JavaScript');
 assert.ok(jsScaffold.files.includes('package.json'));
@@ -187,8 +235,8 @@ const rejectionDiagnostic = rejectionMetrics([
   {predicted: 'video', accepted: true}
 ]);
 assert.equal(rejectionDiagnostic.knownRejected, 1 / 3, 'rejeição não deve confundir erro de classe com corte por threshold');
-assert.equal(rejectionDiagnostic.unknownAccepted, 1 / 3);
-assert.equal(rejectionDiagnostic.unknownRejected, 2 / 3);
+assert.equal(rejectionDiagnostic.unknownAccepted, 2 / 3);
+assert.equal(rejectionDiagnostic.unknownRejected, 1 / 3);
 
 const leakage = leakageReport({
   train: TRAIN_EXAMPLES,
@@ -202,6 +250,80 @@ assert.equal(leakage.similarPairCount, 0, 'não pode haver pares quase duplicado
 
 const unknown = core.ask('qual o melhor jeito de temperar feijao?');
 assert.equal(unknown.type, 'clarification');
+assert.match(unknown.text, /Pode explicar de outro jeito/);
+assert.doesNotMatch(unknown.text, /Você quer conversar, guardar/);
+
+const greeting = core.ask('oi!');
+assert.equal(greeting.type, 'chat');
+assert.match(greeting.text, /^Oi!/);
+
+const smallTalk = core.ask('tudo bem?');
+assert.equal(smallTalk.type, 'chat');
+assert.match(smallTalk.text, /funcionando normalmente/);
+
+const thanks = core.ask('valeu!');
+assert.equal(thanks.type, 'chat');
+assert.match(thanks.text, /Por nada/);
+
+const shortReply = core.ask('sim');
+assert.equal(shortReply.type, 'chat');
+assert.match(shortReply.text, /Pode continuar/);
+
+const ambiguousShortMessage = core.ask('loli');
+assert.equal(ambiguousShortMessage.type, 'clarification');
+assert.match(ambiguousShortMessage.text, /Não reconheci/);
+assert.match(ambiguousShortMessage.text, /testando minha interpretação/);
+
+const identity = core.ask('quem é você?');
+assert.equal(identity.type, 'chat');
+assert.match(identity.text, /Sou o NEX/);
+
+const programmingTopic = core.ask('programação');
+assert.equal(programmingTopic.type, 'chat');
+assert.match(programmingTopic.text, /Posso ajudar com programação/);
+
+const misspelledProgrammingTopic = core.ask('ptogamaçao');
+assert.equal(misspelledProgrammingTopic.type, 'chat');
+assert.match(misspelledProgrammingTopic.text, /Posso ajudar com programação/);
+
+const capabilitiesQuestion = core.ask('oque vc pode fazer');
+assert.equal(capabilitiesQuestion.type, 'chat');
+assert.match(capabilitiesQuestion.text, /programação/);
+
+const capabilitiesQuestionWithAccent = core.ask('o que você pode fazer');
+assert.equal(capabilitiesQuestionWithAccent.type, 'chat');
+assert.match(capabilitiesQuestionWithAccent.text, /programação/);
+
+const programmingRequest = core.ask('quero programar um aplicativo em JavaScript');
+assert.equal(programmingRequest.type, 'code');
+assert.equal(programmingRequest.result.type, 'scaffold');
+
+const capabilities = core.ask('explique tudo oq pode fazer');
+assert.equal(capabilities.type, 'chat');
+assert.match(capabilities.text, /programação/);
+assert.match(capabilities.text, /memórias/);
+
+const imageCapability = core.ask('consegue criar imagens?');
+assert.equal(imageCapability.type, 'chat');
+assert.match(imageCapability.text, /Ainda não/);
+assert.match(imageCapability.text, /motor de geração de imagens integrado/);
+const appRequest = core.ask('quero criar um aplicativo');
+assert.equal(appRequest.type, 'code');
+assert.equal(appRequest.result.type, 'scaffold');
+
+const pythonRequest = core.ask('me ajuda com Python');
+assert.equal(pythonRequest.type, 'code');
+assert.equal(pythonRequest.result.language, 'python');
+
+
+const cinematicPlan = core.video.plan('crie uma nave e um robô voando em uma cidade à noite com camera pan por 12 segundos');
+assert.equal(cinematicPlan.schema, 'nex.video-plan.v2');
+assert.equal(cinematicPlan.durationSeconds, 12);
+assert.equal(cinematicPlan.scene.environment, 'night');
+assert.equal(cinematicPlan.camera.motion, 'pan');
+assert.deepEqual(cinematicPlan.scene.objects.map(object => object.type), ['spaceship', 'robot', 'city']);
+assert.equal(cinematicPlan.capabilities.videoGeneration, false, 'planejamento não deve se apresentar como vídeo renderizado');
+
 const video = core.ask('crie uma cena 3d com uma nave');
 assert.equal(video.type, 'video-plan', 'um comando de vídeo claro deve gerar um plano de vídeo');
 
@@ -293,8 +415,29 @@ const integratedSite = readFileSync(new URL('../index.html', import.meta.url), '
 assert.ok(integratedSite.includes("import { NexCore } from './src/index.js'"), 'site importa o Core');
 assert.ok(integratedSite.includes('window.nexCore = core'), 'site expõe a instância do Core');
 assert.ok(integratedSite.includes('window.nexReady'), 'site aguarda a inicialização');
-assert.ok(integratedSite.includes('NEX CORE 0.3.0'), 'site identifica a versão integrada');
+assert.ok(integratedSite.includes('NEX CORE 0.4.0'), 'site identifica a versão integrada');
 assert.ok(integratedSite.includes('id="nex-core-status"'), 'site exibe estado do Core');
+
+const inlineScripts = [...integratedSite.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+assert.ok(inlineScripts.length >= 2, 'site deve conter scripts inline');
+const inlineCheckDir = mkdtempSync(join(tmpdir(), 'nex-inline-script-check-'));
+try {
+  inlineScripts.forEach((match, index) => {
+    const isModule = /\btype=["']module["']/i.test(match[1]);
+    const extension = isModule ? 'mjs' : 'js';
+    const filePath = join(inlineCheckDir, 'inline-' + index + '.' + extension);
+    writeFileSync(filePath, match[2], 'utf8');
+    const syntax = spawnSync(process.execPath, ['--check', filePath], {encoding: 'utf8'});
+    assert.equal(
+      syntax.status,
+      0,
+      'script inline ' + index + ' deve ter sintaxe válida: ' + (syntax.stderr || syntax.stdout)
+    );
+  });
+} finally {
+  rmSync(inlineCheckDir, {recursive: true, force: true});
+}
+
 console.log(JSON.stringify({
   ok: true,
   datasetVersion: core.chat.datasetVersion,

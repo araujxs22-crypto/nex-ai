@@ -1,4 +1,4 @@
-# NEX Core 0.3.0
+# NEX Core 0.4.0
 
 Módulo independente, offline e sem APIs pagas para ser integrado a uma aplicação HTML/JavaScript existente. Ele não altera nem recria a interface do NEX AI.
 
@@ -6,9 +6,19 @@ Módulo independente, offline e sem APIs pagas para ser integrado a uma aplicaç
 
 - **Rede neural própria:** MLP pequena em JavaScript puro, com camada oculta `tanh`, saída `softmax`, entropia cruzada, backpropagation, atualização de pesos, métricas e serialização.
 - **NEX Video Engine:** transforma uma descrição em um plano JSON de cena, objetos, câmera, iluminação e timeline. É um planejador, não um renderizador ou gerador de vídeo.
-- **NEX Code Engine 0.3.0:** análise estrutural leve para JavaScript, Python e HTML; diagnósticos com severidade, linha, coluna e sugestão; detecção de delimitadores/string sem fechamento, atribuições incompletas, cabeçalhos Python sem dois-pontos, tags HTML incompatíveis e ids duplicados; scaffolds JavaScript/Python com arquivos de teste e comandos sugeridos; os projetos gerados são executados em diretórios temporários no CI para validar os testes incluídos.
+- **NEX Code Engine 0.4.0:** análise estrutural leve para JavaScript, Python e HTML; diagnósticos com severidade, linha, coluna e sugestão; detecção de delimitadores/string sem fechamento, atribuições incompletas, cabeçalhos Python sem dois-pontos, tags HTML incompatíveis e ids duplicados; scaffolds JavaScript/Python com arquivos de teste e comandos sugeridos; os projetos gerados são executados em diretórios temporários no CI para validar os testes incluídos.
 - **NEX Chat:** classifica intenções e coordena vídeo, código e memória. Conversação geral é deliberadamente limitada e local.
 - **Memória:** armazenamento persistente em `localStorage` no navegador, com busca lexical e exportação/importação JSON. Memória não altera os pesos da rede.
+
+
+## Melhorias do Core 0.4.0
+
+- Checkpoints da rede neural são cópias independentes; os parâmetros e exemplos de treinamento são validados antes do treino.
+- Vetorização de texto usa índice por token para evitar busca linear em todo o vocabulário.
+- Memória local valida importação, limita tamanho e quantidade, melhora busca por título/tags e não confirma gravações que falharam.
+- Code Engine gera também um scaffold de site responsivo (HTML/CSS/JS) com testes executáveis, além dos scaffolds JavaScript e Python.
+- Video Engine produz planos v2 com múltiplos objetos, posições, câmera, ambiente, iluminação, animação e timeline. O plano não equivale a renderização nem geração de vídeo.
+- Métricas de rejeição separam rejeição por limiar de uma previsão da classe "unknown".
 
 ## Limitações honestas
 
@@ -79,4 +89,4 @@ demo/index.html              demonstração offline
 
 ## Aplicação integrada
 
-`index.html` é a entrada do site e preserva a interface existente. Importa `src/index.js`, inicializa o NEX Core 0.3.0, treina e calibra o modelo na primeira abertura e persiste os pesos em `localStorage`. Pedidos de programação usam o Code Engine; pedidos de cena usam o Video Engine. O Core não executa código arbitrário nem grava arquivos diretamente no computador. Para publicar com GitHub Pages, configure a publicação pela raiz da branch que contém `index.html`.
+`index.html` é a entrada do site e preserva a interface existente. Importa `src/index.js`, inicializa o NEX Core 0.4.0, treina e calibra o modelo na primeira abertura e persiste os pesos em `localStorage`. Pedidos de programação usam o Code Engine; pedidos de cena usam o Video Engine. O Core não executa código arbitrário nem grava arquivos diretamente no computador. Para publicar com GitHub Pages, configure a publicação pela raiz da branch que contém `index.html`.
