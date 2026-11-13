@@ -1,16 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "NEX — Leitor da Sala do Futuro",
-  "description": "Lê o texto visível da Sala do Futuro quando você clica na extensão e permite copiá-lo para estudar com o NEX.",
-  "version": "1.0.0",
+  "name": "NEX — Agente de Navegador",
+  "description": "Ajuda a ler e controlar a aba atual em sites escolhidos por você, com ações iniciadas manualmente.",
+  "version": "1.1.0",
   "minimum_chrome_version": "111",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "clipboardWrite"
-  ],
+  "permissions": ["activeTab", "scripting", "clipboardWrite"],
   "action": {
-    "default_title": "Ler atividade com NEX",
+    "default_title": "Controlar página com NEX",
     "default_popup": "popup.html"
   }
 }
