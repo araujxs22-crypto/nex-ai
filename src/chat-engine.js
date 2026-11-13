@@ -114,7 +114,26 @@ export class NexChatEngine {
     const socialReply = respondToSocialMessage(text);
     if (socialReply) return socialReply;
 
-    const classification = this.classify(text);
+    // O vocabulário neural é pequeno; não deixe termos centrais de programação
+    // caírem no fallback "unknown" só porque a frase é curta ou contém acento.
+    const normalized = String(text ?? '').toLowerCase()
+      .normalize('NFD')
+      .replace(/[\\u0300-\\u036f]/g, '')
+      .trim()
+      .replace(/\\s+/g, ' ');
+
+    if (/^(programacao|ptogamacao|programar|codigo|codar)$/.test(normalized)) {
+      return {
+        type: 'chat',
+        text: 'Claro! Posso ajudar com programação, analisar código, encontrar erros ou montar um projeto. O que você quer programar?'
+      };
+    }
+
+    const codingIntent = /\\b(programacao|programar|programando|codigo|codar|javascript|typescript|python|html|css|script|bug|depurar|depuracao)\\b/.test(normalized)
+      || /ptogama/.test(normalized);
+    const classification = codingIntent
+      ? {intent: 'code', rawIntent: 'code', accepted: true, confidence: 1, margin: 1, recognizedRatio: 1}
+      : this.classify(text);
     const lower = text.toLowerCase();
 
     if (classification.intent === 'unknown') {
