@@ -238,6 +238,14 @@ const misspelledProgrammingTopic = core.ask('ptogamaçao');
 assert.equal(misspelledProgrammingTopic.type, 'chat');
 assert.match(misspelledProgrammingTopic.text, /Posso ajudar com programação/);
 
+const capabilitiesQuestion = core.ask('oque vc pode fazer');
+assert.equal(capabilitiesQuestion.type, 'chat');
+assert.match(capabilitiesQuestion.text, /programação/);
+
+const capabilitiesQuestionWithAccent = core.ask('o que você pode fazer');
+assert.equal(capabilitiesQuestionWithAccent.type, 'chat');
+assert.match(capabilitiesQuestionWithAccent.text, /programação/);
+
 const programmingRequest = core.ask('quero programar um aplicativo em JavaScript');
 assert.equal(programmingRequest.type, 'code');
 assert.equal(programmingRequest.result.type, 'scaffold');
@@ -251,6 +259,14 @@ const imageCapability = core.ask('consegue criar imagens?');
 assert.equal(imageCapability.type, 'chat');
 assert.match(imageCapability.text, /Ainda não/);
 assert.match(imageCapability.text, /motor de geração de imagens integrado/);
+const appRequest = core.ask('quero criar um aplicativo');
+assert.equal(appRequest.type, 'code');
+assert.equal(appRequest.result.type, 'scaffold');
+
+const pythonRequest = core.ask('me ajuda com Python');
+assert.equal(pythonRequest.type, 'code');
+assert.equal(pythonRequest.result.language, 'python');
+
 const video = core.ask('crie uma cena 3d com uma nave');
 assert.equal(video.type, 'video-plan', 'um comando de vídeo claro deve gerar um plano de vídeo');
 
