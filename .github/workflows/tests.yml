@@ -5,6 +5,7 @@ on:
     branches:
       - feat/nex-project-generation-preview
       - feat/chrome-extension-sala-do-futuro
+      - feat/nex-school-task-detection
   pull_request:
     branches:
       - feature/natural-dialogue-core
