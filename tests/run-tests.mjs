@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, dirname} from 'node:path';
-import {execFileSync} from 'node:child_process';
+import {execFileSync, spawnSync} from 'node:child_process';
 import {NexCore, TinyMLP} from '../src/index.js';
 import {NexCodeEngine} from '../src/engines/code-engine.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
@@ -96,11 +96,16 @@ try {
     mkdirSync(dirname(absolutePath), {recursive: true});
     writeFileSync(absolutePath, content, 'utf8');
   }
-  const pyTestOutput = execFileSync('python3', ['-m', 'unittest', 'discover', '-s', 'tests'], {
+  const pyTestResult = spawnSync('python3', ['-m', 'unittest', 'discover', '-s', 'tests'], {
     cwd: pyScaffoldDir,
     encoding: 'utf8'
   });
-  assert.match(pyTestOutput, /OK/, 'o teste do scaffold Python deve executar e passar');
+  assert.equal(
+    pyTestResult.status,
+    0,
+    pyTestResult.stderr || pyTestResult.stdout || 'o teste do scaffold Python deve executar e passar'
+  );
+  assert.match(pyTestResult.stderr + pyTestResult.stdout, /OK/);
 } finally {
   rmSync(pyScaffoldDir, {recursive: true, force: true});
 }
