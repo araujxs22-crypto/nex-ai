@@ -202,6 +202,33 @@ assert.equal(leakage.similarPairCount, 0, 'não pode haver pares quase duplicado
 
 const unknown = core.ask('qual o melhor jeito de temperar feijao?');
 assert.equal(unknown.type, 'clarification');
+assert.match(unknown.text, /Pode explicar de outro jeito/);
+assert.doesNotMatch(unknown.text, /Você quer conversar, guardar/);
+
+const greeting = core.ask('oi!');
+assert.equal(greeting.type, 'chat');
+assert.match(greeting.text, /^Oi!/);
+
+const smallTalk = core.ask('tudo bem?');
+assert.equal(smallTalk.type, 'chat');
+assert.match(smallTalk.text, /funcionando normalmente/);
+
+const thanks = core.ask('valeu!');
+assert.equal(thanks.type, 'chat');
+assert.match(thanks.text, /Por nada/);
+
+const shortReply = core.ask('sim');
+assert.equal(shortReply.type, 'chat');
+assert.match(shortReply.text, /Pode continuar/);
+
+const ambiguousShortMessage = core.ask('loli');
+assert.equal(ambiguousShortMessage.type, 'clarification');
+assert.match(ambiguousShortMessage.text, /Não reconheci/);
+assert.match(ambiguousShortMessage.text, /testando minha interpretação/);
+
+const identity = core.ask('quem é você?');
+assert.equal(identity.type, 'chat');
+assert.match(identity.text, /Sou o NEX/);
 const video = core.ask('crie uma cena 3d com uma nave');
 assert.equal(video.type, 'video-plan', 'um comando de vídeo claro deve gerar um plano de vídeo');
 
