@@ -91,7 +91,7 @@ try {
   assert.equal(submitButton.clickCount, 0, 'nunca deve acionar botões de envio');
 
   browserTestElements = [safeLink, mockBrowserElement({tagName:'A',text:'Abrir documentação avançada',href:'/advanced'})];
-  assert.equal(clickElementOnPage('Abrir documentação').ok, false, 'deve pedir texto específico quando a busca parcial é ambígua');
+  assert.equal(clickElementOnPage('Abrir').ok, false, 'deve pedir texto específico quando a busca parcial é ambígua');
 } finally {
   if (originalDocumentForBrowserTests === undefined) delete globalThis.document;
   else globalThis.document = originalDocumentForBrowserTests;
