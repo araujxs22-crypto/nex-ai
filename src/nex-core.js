@@ -27,6 +27,10 @@ export class NexCore {
     return this.chat.evaluate();
   }
 
+  calibrate(options = {}) {
+    return this.chat.calibrateRouter(options);
+  }
+
   saveModel(storageKey = 'nex-core-model') {
     if (typeof localStorage === 'undefined') return false;
     localStorage.setItem(storageKey, this.chat.exportModel());
