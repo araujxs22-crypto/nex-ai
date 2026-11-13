@@ -234,6 +234,7 @@ export class TextVectorizer {
     this.labels = labels;
     this.vocab = vocab;
     this.featureIndex = new Map(vocab.map((feature, index) => [feature, index]));
+    this.bigramWeight = 0.25;
   }
 
   tokenize(text) {
@@ -253,16 +254,23 @@ export class TextVectorizer {
   }
 
   encode(text) {
-    const features = this.featureTokens(text);
+    const tokens = this.tokenize(text);
     const vector = Array(this.vocab.length).fill(0);
+    const unigramScale = 1 / Math.max(tokens.length, 1);
+    const bigramScale = this.bigramWeight / Math.max(tokens.length - 1, 1);
 
-    for (const feature of features) {
-      const index = this.featureIndex.get(feature);
-      if (index !== undefined) vector[index]++;
+    // Mantém a escala anterior dos unigramas e adiciona contexto com peso menor.
+    for (const token of tokens) {
+      const index = this.featureIndex.get(`u:${token}`);
+      if (index !== undefined) vector[index] += unigramScale;
     }
 
-    const denominator = Math.max(features.length, 1);
-    return vector.map(value => value / denominator);
+    for (let i = 0; i < tokens.length - 1; i++) {
+      const index = this.featureIndex.get(`b:${tokens[i]}_${tokens[i + 1]}`);
+      if (index !== undefined) vector[index] += bigramScale;
+    }
+
+    return vector;
   }
 
   recognizedRatio(text) {
