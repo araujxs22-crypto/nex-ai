@@ -299,6 +299,63 @@ const leakage = leakageReport({
 assert.equal(leakage.duplicateCount, 0, 'não pode haver duplicatas entre splits');
 assert.equal(leakage.similarPairCount, 0, 'não pode haver pares quase duplicados entre splits');
 
+const salaDoFuturoPage = `
+Sala do Futuro Aluno
+https://saladofuturo.educacao.sp.gov.br/atividade/106679830?enable_captcha=true
+Tarefa SP
+História - 2200
+Tarefa 5: Religião e poder na Idade Média
+Aprendizagem Essencial: Associar as características e trajetórias dos povos cristãos, judeus e islâmicos.
+Questão 01 de 06
+Preencha as lacunas a seguir sobre judaísmo.
+Questão 02 de 06
+A) Os judeus foram proibidos de exercer cargos públicos.
+Certo
+Errado
+Questão 03 de 06
+A Primeira Cruzada foi organizada por quais povos?
+A) judeus.
+B) cristãos.
+C) islâmicos.
+D) muçulmanos.
+Questão 04 de 06
+A relação entre cristãos portugueses e judeus foi marcada por...
+A) conflitos.
+B) perseguições e trocas culturais.
+C) harmonia.
+D) paz.
+Questão 05 de 06
+Uma consequência das Cruzadas foi o...
+A) conflito entre reinos.
+B) contato entre regiões distintas.
+C) isolamento religioso.
+D) enfraquecimento comercial.
+Questão 06 de 06
+Explique como as Cruzadas levaram a transformações políticas na Europa feudal.
+N° mínimo de caracteres: 1
+`;
+const schoolTaskResponse = core.ask(salaDoFuturoPage);
+assert.equal(schoolTaskResponse.type, 'school-task', 'texto da Sala do Futuro deve ser reconhecido como atividade');
+assert.equal(schoolTaskResponse.result.total, 6, 'total de questões deve ser identificado');
+assert.equal(schoolTaskResponse.result.detected, 6, 'questões visíveis devem ser contadas');
+assert.equal(schoolTaskResponse.result.subject, 'História', 'matéria deve ser extraída');
+assert.match(schoolTaskResponse.text, /Tarefa 5: Religião e poder na Idade Média/);
+assert.match(schoolTaskResponse.text, /6 de 6/);
+assert.equal(schoolTaskResponse.result.questions[0].type, 'fill-blanks');
+assert.equal(schoolTaskResponse.result.questions[1].type, 'true-false');
+assert.equal(schoolTaskResponse.result.questions[2].type, 'multiple-choice');
+assert.equal(schoolTaskResponse.result.questions[5].type, 'written-response');
+const schoolQuestionResponse = core.ask('me ajuda na questão 1');
+assert.equal(schoolQuestionResponse.type, 'school-question', 'NEX deve preservar o contexto da atividade');
+assert.match(schoolQuestionResponse.text, /Completar lacunas/);
+assert.match(schoolQuestionResponse.text, /judaísmo|lacunas/i);
+const schoolWrittenResponse = core.ask('explique a questão 6');
+assert.equal(schoolWrittenResponse.type, 'school-question');
+assert.match(schoolWrittenResponse.text, /apresente a mudança/);
+const missingSchoolQuestion = core.ask('questão 9');
+assert.equal(missingSchoolQuestion.type, 'school-question');
+assert.match(missingSchoolQuestion.text, /Não encontrei a questão 9/);
+
 const unknown = core.ask('qual o melhor jeito de temperar feijao?');
 assert.equal(unknown.type, 'clarification');
 assert.match(unknown.text, /Pode explicar de outro jeito/);
