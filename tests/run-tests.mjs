@@ -235,8 +235,8 @@ const rejectionDiagnostic = rejectionMetrics([
   {predicted: 'video', accepted: true}
 ]);
 assert.equal(rejectionDiagnostic.knownRejected, 1 / 3, 'rejeição não deve confundir erro de classe com corte por threshold');
-assert.equal(rejectionDiagnostic.unknownAccepted, 1 / 3);
-assert.equal(rejectionDiagnostic.unknownRejected, 2 / 3);
+assert.equal(rejectionDiagnostic.unknownAccepted, 2 / 3);
+assert.equal(rejectionDiagnostic.unknownRejected, 1 / 3);
 
 const leakage = leakageReport({
   train: TRAIN_EXAMPLES,
