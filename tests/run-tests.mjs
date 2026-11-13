@@ -229,6 +229,16 @@ assert.match(ambiguousShortMessage.text, /testando minha interpretação/);
 const identity = core.ask('quem é você?');
 assert.equal(identity.type, 'chat');
 assert.match(identity.text, /Sou o NEX/);
+
+const capabilities = core.ask('explique tudo oq pode fazer');
+assert.equal(capabilities.type, 'chat');
+assert.match(capabilities.text, /programação/);
+assert.match(capabilities.text, /memórias/);
+
+const imageCapability = core.ask('consegue criar imagens?');
+assert.equal(imageCapability.type, 'chat');
+assert.match(imageCapability.text, /Ainda não/);
+assert.match(imageCapability.text, /motor de geração de imagens integrado/);
 const video = core.ask('crie uma cena 3d com uma nave');
 assert.equal(video.type, 'video-plan', 'um comando de vídeo claro deve gerar um plano de vídeo');
 
