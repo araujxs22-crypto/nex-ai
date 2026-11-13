@@ -6,6 +6,11 @@ export class TinyMLP {
       throw new Error('inputSize, hiddenSize e outputSize devem ser inteiros positivos');
     }
 
+    if (!Number.isFinite(learningRate) || learningRate <= 0) {
+      throw new Error('learningRate deve ser um número positivo e finito');
+    }
+    if (!Number.isInteger(seed)) throw new Error('seed deve ser um inteiro');
+
     this.inputSize = inputSize;
     this.hiddenSize = hiddenSize;
     this.outputSize = outputSize;
@@ -139,7 +144,37 @@ export class TinyMLP {
     };
   }
 
-  train(dataset, {epochs = 100, validation = [], batchSize = dataset.length, shuffle = true, patience = 20, onEpoch = () => {}} = {}) {
+  train(dataset, options = {}) {
+    const {
+      epochs = 100,
+      validation = [],
+      batchSize = Array.isArray(dataset) ? dataset.length : 0,
+      shuffle = true,
+      patience = 20,
+      onEpoch = () => {}
+    } = options;
+
+    const validateDataset = (items, name) => {
+      if (!Array.isArray(items)) throw new TypeError(name + ' deve ser um array.');
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        if (!item || !Array.isArray(item.x) || item.x.length !== this.inputSize
+          || !item.x.every(Number.isFinite)
+          || !Number.isInteger(item.y) || item.y < 0 || item.y >= this.outputSize) {
+          throw new Error(name + ' contém um exemplo inválido na posição ' + index + '.');
+        }
+      }
+    };
+
+    validateDataset(dataset, 'dataset');
+    if (dataset.length === 0) throw new Error('dataset não pode estar vazio.');
+    validateDataset(validation, 'validation');
+    if (!Number.isInteger(epochs) || epochs < 1) throw new RangeError('epochs deve ser um inteiro positivo.');
+    if (!Number.isInteger(batchSize) || batchSize < 1) throw new RangeError('batchSize deve ser um inteiro positivo.');
+    if (!Number.isInteger(patience) || patience < 1) throw new RangeError('patience deve ser um inteiro positivo.');
+    if (typeof shuffle !== 'boolean') throw new TypeError('shuffle deve ser booleano.');
+    if (typeof onEpoch !== 'function') throw new TypeError('onEpoch deve ser uma função.');
+
     const history = [];
     let bestLoss = Infinity;
     let bestWeights = null;
@@ -160,6 +195,7 @@ export class TinyMLP {
 
       if (score < bestLoss) {
         bestLoss = score;
+        // toJSON() must return independent arrays so later updates cannot mutate this checkpoint.
         bestWeights = this.toJSON();
         staleEpochs = 0;
       } else if (++staleEpochs >= patience) {
@@ -179,10 +215,11 @@ export class TinyMLP {
       learningRate: this.learningRate,
       seed: this.seed,
       step: this.step,
-      W1: this.W1,
-      b1: this.b1,
-      W2: this.W2,
-      b2: this.b2
+      // Return detached copies: callers may safely retain checkpoints or backups.
+      W1: this.W1.map(row => row.slice()),
+      b1: this.b1.slice(),
+      W2: this.W2.map(row => row.slice()),
+      b2: this.b2.slice()
     };
   }
 
@@ -231,8 +268,9 @@ export class TinyMLP {
 
 export class TextVectorizer {
   constructor(labels, vocab) {
-    this.labels = labels;
-    this.vocab = vocab;
+    this.labels = labels.slice();
+    this.vocab = vocab.slice();
+    this.index = new Map(this.vocab.map((token, index) => [token, index]));
   }
 
   tokenize(text) {
@@ -243,8 +281,8 @@ export class TextVectorizer {
     const tokens = this.tokenize(text);
     const vector = Array(this.vocab.length).fill(0);
     for (const token of tokens) {
-      const index = this.vocab.indexOf(token);
-      if (index >= 0) vector[index]++;
+      const index = this.index.get(token);
+      if (index !== undefined) vector[index]++;
     }
     const denominator = Math.max(tokens.length, 1);
     return vector.map(value => value / denominator);
@@ -253,7 +291,7 @@ export class TextVectorizer {
   recognizedRatio(text) {
     const tokens = this.tokenize(text);
     return tokens.length
-      ? tokens.filter(token => this.vocab.includes(token)).length / tokens.length
+      ? tokens.filter(token => this.index.has(token)).length / tokens.length
       : 0;
   }
 
