@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, dirname} from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
@@ -289,6 +289,12 @@ try {
   }
 }
 
+const integratedSite = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+assert.match(integratedSite, /import \\{ NexCore \\} from '\\.\\/src\\/index\\.js'/, 'site importa o Core');
+assert.match(integratedSite, /window\\.nexCore = core/, 'site expõe a instância do Core');
+assert.match(integratedSite, /window\\.nexReady/, 'site aguarda a inicialização');
+assert.match(integratedSite, /NEX CORE 0\\.3\\.0/, 'site identifica a versão integrada');
+assert.match(integratedSite, /id="nex-core-status"/, 'site exibe estado do Core');
 console.log(JSON.stringify({
   ok: true,
   datasetVersion: core.chat.datasetVersion,
