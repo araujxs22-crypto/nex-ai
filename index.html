@@ -514,7 +514,7 @@ window.nexCore = core;
 const status = document.getElementById('nex-core-status');
 window.formatNexResponse = (r) => {
  if (!r) return 'Core sem resposta.';
- if (r.type === 'clarification' || r.type === 'chat') return r.text;
+ if (r.type === 'clarification' || r.type === 'chat' || r.type === 'school-task' || r.type === 'school-question') return r.text;
  if (r.type === 'video-plan') return 'VIDEO ENGINE 0.5.0 — PLANO DE CENA\n' + JSON.stringify(r.result,null,2) + '\n\nO motor planeja; ainda não gera o vídeo final.';
  if (r.type === 'memory') return 'Memória salva. ' + JSON.stringify(r.result);
  if (r.type === 'memory-search') return 'Busca na memória: ' + JSON.stringify(r.result);
