@@ -10,7 +10,19 @@ import {buildProjectPreview} from '../src/engines/project-preview.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
+import {isSalaDoFuturoUrl} from '../extension/sala-do-futuro/policy.js';
 
+
+assert.equal(isSalaDoFuturoUrl('https://saladofuturo.educacao.sp.gov.br/'), true);
+assert.equal(isSalaDoFuturoUrl('https://SALADOFUTURO.EDUCACAO.SP.GOV.BR/atividade'), true);
+assert.equal(isSalaDoFuturoUrl('http://saladofuturo.educacao.sp.gov.br/'), false);
+assert.equal(isSalaDoFuturoUrl('https://saladofuturo.educacao.sp.gov.br.evil.example/'), false);
+assert.equal(isSalaDoFuturoUrl('https://example.com/'), false);
+assert.equal(isSalaDoFuturoUrl('https://usuario:senha@saladofuturo.educacao.sp.gov.br/'), false);
+const salaExtensionManifest = JSON.parse(readFileSync(new URL('../extension/sala-do-futuro/manifest.json', import.meta.url), 'utf8'));
+assert.equal(salaExtensionManifest.manifest_version, 3);
+assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', 'clipboardWrite']);
+assert.equal(salaExtensionManifest.host_permissions, undefined);
 
 const codeEngine = new NexCodeEngine();
 
