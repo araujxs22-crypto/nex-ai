@@ -1,70 +1,99 @@
-import {isSalaDoFuturoUrl} from './policy.js';
+import {isSupportedPageUrl} from './policy.js';
 
-const readButton = document.getElementById('read');
-const copyButton = document.getElementById('copy');
-const status = document.getElementById('status');
-const preview = document.getElementById('preview');
-
+const $ = id => document.getElementById(id);
+const status = $('status');
 let pageText = '';
+function report(message) { status.textContent = message; }
 
-function setStatus(message) {
-  status.textContent = message;
-}
-
-async function getActiveTab() {
-  const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+async function activeTab() {
+  const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
   if (!tab?.id || !tab.url) throw new Error('Não consegui identificar a aba atual.');
-  if (!isSalaDoFuturoUrl(tab.url)) {
-    throw new Error('Abra primeiro https://saladofuturo.educacao.sp.gov.br/ e entre na sua conta.');
-  }
+  if (!isSupportedPageUrl(tab.url)) throw new Error('Por segurança, o NEX só atua em páginas HTTPS.');
   return tab;
 }
+async function runOnPage(func, args = []) {
+  const tab = await activeTab();
+  const results = await chrome.scripting.executeScript({target:{tabId:tab.id},func,args});
+  return results?.[0]?.result;
+}
 
-readButton.addEventListener('click', async () => {
-  readButton.disabled = true;
-  copyButton.disabled = true;
-  pageText = '';
-  preview.value = '';
-  setStatus('Lendo o texto visível da atividade…');
-
+$('navigate').addEventListener('click', async () => {
   try {
-    const tab = await getActiveTab();
-    const [result] = await chrome.scripting.executeScript({
-      target: {tabId: tab.id},
-      func: () => ({
-        title: document.title || 'Sala do Futuro',
-        url: location.href,
-        text: document.body?.innerText || ''
-      })
-    });
-
-    const data = result?.result;
-    const extracted = String(data?.text || '').trim();
-    if (!extracted) throw new Error('Não encontrei texto visível. Aguarde a atividade carregar e tente novamente.');
-
-    pageText = [
-      data.title || 'Sala do Futuro',
-      data.url || tab.url,
-      '',
-      extracted.slice(0, 14000)
-    ].join('\n');
-
-    preview.value = pageText;
-    copyButton.disabled = false;
-    setStatus('Texto lido. Clique em “Copiar texto para o NEX”.');
-  } catch (error) {
-    setStatus(error?.message || 'Não foi possível ler esta página.');
-  } finally {
-    readButton.disabled = false;
-  }
+    const raw = $('url').value.trim();
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Use um endereço HTTPS válido, sem usuário ou senha.');
+    const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
+    await chrome.tabs.update(tab.id,{url:url.href});
+    report('Endereço aberto. Depois que carregar, clique novamente na extensão para ler ou interagir.');
+  } catch(error) { report(error.message || 'Não foi possível abrir o endereço.'); }
 });
 
-copyButton.addEventListener('click', async () => {
-  if (!pageText) return;
+$('read').addEventListener('click', async () => {
   try {
-    await navigator.clipboard.writeText(pageText);
-    setStatus('Copiado. Volte ao NEX, clique na conversa e cole com Ctrl+V.');
-  } catch {
-    setStatus('A cópia automática foi bloqueada. Selecione o texto e copie manualmente.');
-  }
+    report('Lendo o conteúdo visível…');
+    const data = await runOnPage(() => ({title:document.title,url:location.href,text:document.body?.innerText || ''}));
+    pageText = [data.title,data.url,'',String(data.text).slice(0,20000)].join('\n');
+    if (!data.text.trim()) throw new Error('Não encontrei texto visível nesta página.');
+    $('preview').value = pageText;
+    $('copy').disabled = false;
+    report('Página lida. Você pode copiar o texto para o NEX.');
+  } catch(error) { report(error.message || 'Falha ao ler a página.'); }
 });
+
+$('click').addEventListener('click', async () => {
+  const target = $('target').value.trim();
+  if (!target) return report('Digite o texto visível do botão ou link.');
+  try {
+    const result = await runOnPage((needle) => {
+      const norm = value => String(value || '').replace(/\s+/g,' ').trim().toLocaleLowerCase();
+      const wanted = norm(needle);
+      const candidates = [...document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')];
+      const found = candidates.find(el => {
+        const text = norm(el.innerText || el.value || el.getAttribute('aria-label') || el.title);
+        const rect = el.getBoundingClientRect();
+        return text.includes(wanted) && rect.width > 0 && rect.height > 0 && !el.disabled;
+      });
+      if (!found) return {ok:false,message:'Não encontrei um botão ou link visível com esse texto.'};
+      found.click();
+      return {ok:true,message:'Clique executado em: ' + (found.innerText || found.value || found.getAttribute('aria-label') || needle)};
+    },[target]);
+    report(result.message);
+  } catch(error) { report(error.message || 'Não foi possível clicar.'); }
+});
+
+$('type').addEventListener('click', async () => {
+  const label = $('field').value.trim();
+  const value = $('value').value;
+  if (!label) return report('Informe o nome, rótulo ou placeholder do campo.');
+  try {
+    const result = await runOnPage((needle,text) => {
+      const norm = value => String(value || '').replace(/\s+/g,' ').trim().toLocaleLowerCase();
+      const wanted = norm(needle);
+      const fields = [...document.querySelectorAll('input:not([type="password"]):not([type="hidden"]),textarea,[contenteditable="true"]')];
+      const found = fields.find(el => {
+        const meta = [el.name,el.id,el.placeholder,el.getAttribute('aria-label'),el.getAttribute('autocomplete')].join(' ');
+        const labelText = el.labels ? [...el.labels].map(x=>x.innerText).join(' ') : '';
+        const rect = el.getBoundingClientRect();
+        return norm(meta + ' ' + labelText).includes(wanted) && rect.width > 0 && rect.height > 0 && !el.disabled && !el.readOnly;
+      });
+      if (!found) return {ok:false,message:'Não encontrei esse campo visível e editável.'};
+      found.focus();
+      if (found.isContentEditable) found.textContent = text;
+      else {
+        const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(found),'value')?.set;
+        if (setter) setter.call(found,text); else found.value = text;
+      }
+      found.dispatchEvent(new Event('input',{bubbles:true}));
+      found.dispatchEvent(new Event('change',{bubbles:true}));
+      return {ok:true,message:'Campo preenchido. Nada foi enviado.'};
+    },[label,value]);
+    report(result.message);
+  } catch(error) { report(error.message || 'Não foi possível preencher o campo.'); }
+});
+
+$('copy').addEventListener('click',async()=>{
+  if(!pageText)return;
+  try{await navigator.clipboard.writeText(pageText);report('Texto copiado. Cole na conversa do NEX com Ctrl+V.');}
+  catch{report('Cópia bloqueada pelo navegador. Selecione o texto e copie manualmente.');}
+});
+$('clear').addEventListener('click',()=>{$('preview').value='';pageText='';$('copy').disabled=true;report('Conteúdo limpo.');});
