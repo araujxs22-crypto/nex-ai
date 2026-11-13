@@ -2,11 +2,13 @@ name: NEX Core tests
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'fix/**']
   push:
     branches:
       - main
       - 'fix/**'
+      - 'eval/**'
+      - 'calibration/**'
 
 permissions:
   contents: read

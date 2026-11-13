@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {NexCore, TinyMLP} from '../src/index.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
-import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES} from '../data/training-data.js';
+import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
 
 const core = new NexCore();
 const before = JSON.stringify(core.chat.model.toJSON());
@@ -13,27 +13,88 @@ assert.notEqual(before, after, 'pesos devem mudar');
 assert.ok(history.length <= 500, 'early stopping deve ser permitido');
 assert.ok(history.at(-1).validation, 'validação deve ser medida');
 
+const beforeCalibrationEvaluation = core.evaluate();
+const beforeKnownMetrics = classificationMetrics(
+  beforeCalibrationEvaluation.predictions,
+  core.chat.labels
+);
+const beforeKnownPredictions = beforeCalibrationEvaluation.predictions.filter(
+  example => example.actual !== 'unknown'
+);
+const beforeRejection = rejectionMetrics(beforeKnownPredictions, beforeCalibrationEvaluation.unknown);
+
+const weightsBeforeCalibration = JSON.stringify(core.chat.model.toJSON());
+const calibration = core.calibrate({minKnownCoverage: 0.75});
+assert.ok(calibration.metrics.knownCoverage >= 0.75, 'calibração deve respeitar cobertura mínima');
+assert.ok(calibration.metrics.candidatesEvaluated > 0, 'deve avaliar combinações de limites');
+assert.equal(
+  JSON.stringify(core.chat.model.toJSON()),
+  weightsBeforeCalibration,
+  'calibrar limites não pode alterar pesos neurais'
+);
+
 const evalResult = core.evaluate();
 const knownMetrics = classificationMetrics(evalResult.predictions, core.chat.labels);
-const rejection = rejectionMetrics(evalResult.predictions, evalResult.unknown);
-assert.equal(TRAIN_EXAMPLES.length, 20);
-assert.equal(VALIDATION_EXAMPLES.length, 4);
-assert.equal(TEST_EXAMPLES.length, 4);
-assert.equal(UNKNOWN_EXAMPLES.length, 4);
+const knownPredictions = evalResult.predictions.filter(example => example.actual !== 'unknown');
+const rejection = rejectionMetrics(knownPredictions, evalResult.unknown);
+
+const labels = ['video', 'code', 'memory', 'general', 'unknown'];
+for (const [name, examples, expectedPerClass] of [
+  ['treino', TRAIN_EXAMPLES, 12],
+  ['validação', VALIDATION_EXAMPLES, 4],
+  ['teste', TEST_EXAMPLES, 6]
+]) {
+  assert.equal(examples.length, expectedPerClass * labels.length, `tamanho do split de ${name}`);
+  for (const label of labels) {
+    assert.equal(
+      examples.filter(example => example.label === label).length,
+      expectedPerClass,
+      `split de ${name} deve ser balanceado para ${label}`
+    );
+  }
+}
+assert.equal(UNKNOWN_EXAMPLES.length, 10, 'deve haver dez sondagens OOD independentes');
+assert.equal(UNKNOWN_CALIBRATION_EXAMPLES.length, 8, 'deve haver oito exemplos OOD separados para calibracao');
 assert.ok(Number.isFinite(knownMetrics.macro.f1));
-assert.ok(rejection.unknownRejected >= 0);
+assert.ok(rejection.unknownRejected >= 0 && rejection.unknownRejected <= 1);
+
+const diagnosticMetrics = classificationMetrics([
+  {actual: 'video', predicted: 'unknown'},
+  {actual: 'code', predicted: 'code'},
+  {actual: 'unknown', predicted: 'unknown'}
+], labels);
+assert.equal(diagnosticMetrics.confusionMatrix.video.unknown, 1);
+assert.equal(diagnosticMetrics.confusionMatrix.code.code, 1);
+assert.equal(diagnosticMetrics.accuracy, 2 / 3);
+assert.equal(diagnosticMetrics.macro.supportedClasses, 3);
+
+const rejectionDiagnostic = rejectionMetrics([
+  {predicted: 'unknown', accepted: false},
+  {predicted: 'unknown', accepted: true},
+  {predicted: 'code', accepted: true}
+], [
+  {predicted: 'unknown', accepted: false},
+  {predicted: 'unknown', accepted: true},
+  {predicted: 'video', accepted: true}
+]);
+assert.equal(rejectionDiagnostic.knownRejected, 1 / 3, 'rejeição não deve confundir erro de classe com corte por threshold');
+assert.equal(rejectionDiagnostic.unknownAccepted, 1 / 3);
+assert.equal(rejectionDiagnostic.unknownRejected, 2 / 3);
 
 const leakage = leakageReport({
   train: TRAIN_EXAMPLES,
   validation: VALIDATION_EXAMPLES,
-  test: TEST_EXAMPLES
+  test: TEST_EXAMPLES,
+  outOfDomain: UNKNOWN_EXAMPLES.map(text => ({label: 'unknown', text})),
+  outOfDomainCalibration: UNKNOWN_CALIBRATION_EXAMPLES.map(text => ({label: 'unknown', text}))
 });
 assert.equal(leakage.duplicateCount, 0, 'não pode haver duplicatas entre splits');
+assert.equal(leakage.similarPairCount, 0, 'não pode haver pares quase duplicados entre splits');
 
-const unknown = core.ask('qual a receita de bolo de cenoura');
+const unknown = core.ask('qual o melhor jeito de temperar feijao?');
 assert.equal(unknown.type, 'clarification');
 const video = core.ask('crie uma cena 3d com uma nave');
-assert.ok(['video-plan', 'clarification'].includes(video.type));
+assert.equal(video.type, 'video-plan', 'um comando de vídeo claro deve gerar um plano de vídeo');
 
 const savedWeights = core.chat.model.toJSON();
 assert.deepEqual(
@@ -121,16 +182,47 @@ try {
 
 console.log(JSON.stringify({
   ok: true,
+  datasetVersion: core.chat.datasetVersion,
+  counts: {
+    train: TRAIN_EXAMPLES.length,
+    validation: VALIDATION_EXAMPLES.length,
+    test: TEST_EXAMPLES.length,
+    outOfDomain: UNKNOWN_EXAMPLES.length,
+    outOfDomainCalibration: UNKNOWN_CALIBRATION_EXAMPLES.length
+  },
   epochs: history.length,
   initialLoss: history[0].loss,
   finalTrainLoss: history.at(-1).loss,
   finalValidationLoss: history.at(-1).validation?.loss,
+  beforeCalibration: {
+    testAccuracy: beforeKnownMetrics.accuracy,
+    macroF1: beforeKnownMetrics.macro.f1,
+    knownRejected: beforeRejection.knownRejected,
+    outOfDomainRejected: beforeRejection.unknownRejected
+  },
+  afterCalibration: {
+    testAccuracy: knownMetrics.accuracy,
+    macroF1: knownMetrics.macro.f1,
+    knownRejected: rejection.knownRejected,
+    outOfDomainRejected: rejection.unknownRejected
+  },
   testAccuracy: knownMetrics.accuracy,
   macroF1: knownMetrics.macro.f1,
   perClass: knownMetrics.perClass,
   confusionMatrix: knownMetrics.confusionMatrix,
-  unknownRejected: rejection.unknownRejected,
+  knownRejected: rejection.knownRejected,
+  outOfDomainRejected: rejection.unknownRejected,
+  calibration,
   leakage,
+  evaluationTests: [
+    'balanced train, validation and test splits',
+    'unknown predictions included in confusion matrix',
+    'macro averages calculated over supported classes',
+    'independent out-of-domain examples',
+    'explicit video command routed to video-plan',
+    'rejection thresholds calibrated on validation plus separate OOD set',
+    'calibration leaves neural weights unchanged'
+  ],
   persistenceTests: [
     'round-trip de pesos',
     'restauração de labels e vocabulário',
