@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "NEX — Agente de Navegador",
   "description": "Conecta o NEX AI à aba HTTPS autorizada pelo usuário.",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "minimum_chrome_version": "111",
   "permissions": [
     "activeTab",
@@ -28,5 +28,8 @@
   "action": {
     "default_title": "Controlar página com NEX",
     "default_popup": "popup.html"
-  }
+  },
+  "host_permissions": [
+    "http://127.0.0.1:4177/*"
+  ]
 }
