@@ -176,7 +176,32 @@ async function sendMsg(){
  switchTab('chat');appendMessage(text,'user');currentMessages.push({user:text,nex:''});
  const norm=text.toLowerCase();
  const browserCommand=window.nexParseBrowserCommand?.(text) || null;
+ const browserPlan=window.nexParseBrowserPlan?.(text) || null;
+ const codingCommand=window.nexParseCodingCommand?.(text) || null;
+ if(browserPlan?.length>1){
+  let answer='';
+  try{
+   if(!window.nexBrowserAgent)throw new Error('Cliente da extensão ainda não carregou.');
+   const status=await window.nexBrowserAgent.status();
+   if(!status.paired||status.paused||!status.authorized)throw new Error('Confira o pareamento, a autorização da aba e o estado do agente no popup.');
+   answer=await executeBrowserPlan(browserPlan);
+  }catch(error){answer='Plano do navegador interrompido: '+error.message;}
+  finally{setActivity('');}
+  appendMessage(answer,'nex','PLANO DO NAVEGADOR · '+browserPlan.length+' ETAPAS');
+  speakReply(answer);await saveConversation(text,answer);currentMessages[currentMessages.length-1].nex=answer;return;
+ }
+ if(codingCommand){
+  let answer='';
+  const labels={list:'Listando arquivos do workspace…',read:'Lendo arquivo do projeto…',create:'Criando arquivo no workspace…',write:'Atualizando arquivo no workspace…',run:'Executando comando de desenvolvimento…'};
+  setActivity(labels[codingCommand.type]||'Agente de programação trabalhando…');
+  try{answer=await runCodingCommand(codingCommand);}
+  catch(error){answer='Agente de programação: '+error.message;}
+  finally{setActivity('');}
+  appendMessage(answer,'nex','NEX CODE AGENT');speakReply(answer);await saveConversation(text,answer);currentMessages[currentMessages.length-1].nex=answer;return;
+ }
  if(browserCommand){
+  let answer='';
+  setActivity(browserStepLabel(browserCommand));
   let answer='';
   try{
    if(!window.nexBrowserAgent)throw new Error('Cliente da extensão ainda não carregou. Recarregue a página do NEX.');
@@ -227,6 +252,7 @@ async function sendMsg(){
     else{answer='Ação concluída.';}
    }
   }catch(error){answer='Agente de Navegador: '+error.message;}
+  finally{setActivity('');}
   appendMessage(answer,'nex','AGENTE DE NAVEGADOR');
   speakReply(answer);
   await saveConversation(text,answer);
@@ -236,8 +262,9 @@ async function sendMsg(){
 
  if(norm.startsWith('pesquisar:')||norm.startsWith('pesquisa ')){
   const q=text.replace(/^(pesquisar:|pesquisa)\s*/i,'').trim();
-  appendMessage('Pesquisando artigos sobre “'+q+'”…','nex','PESQUISA');
-  await performDeepResearch(q,text);return;
+  setActivity('Pesquisando na web por “'+q+'”…');
+  try{await performDeepResearch(q,text);}finally{setActivity('');}
+  return;
  }
  let answer,response=null;
  try{
