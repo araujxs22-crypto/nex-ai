@@ -14,14 +14,14 @@ Extensão Manifest V3 que conecta o site NEX ao Chrome por uma ponte local de me
 1. Abra a página HTTPS que deseja controlar.
 2. Abra o popup da extensão nessa aba e clique em Autorizar esta aba.
 3. Gere e copie o código temporário (válido por cinco minutos).
-4. Abra https://nex-ai-preview.vercel.app e entre em Agente de Navegador · Chrome.
+4. Abra https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app e entre em Agente de Navegador · Chrome.
 5. Cole o código e clique em Conectar extensão.
 6. No chat do NEX, use: ler página; abrir https://exemplo.com; clicar em Pesquisar; preencher campo Nome com Kaue; voltar; avançar; recarregar.
 
 Ao navegar para outro domínio, a permissão temporária do Chrome pode ser revogada. Abra o popup na página de destino e autorize-a novamente antes de continuar.
 
 ## Segurança
-- O content script de comunicação roda somente em https://nex-ai-preview.vercel.app/.
+- O content script de comunicação roda somente em https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app/.
 - O agente controla somente a aba explicitamente autorizada pelo popup.
 - A ponte valida a origem do site e o formato/tipo dos comandos.
 - Somente URLs HTTPS sem credenciais são aceitas.
