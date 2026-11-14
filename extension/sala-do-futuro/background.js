@@ -159,8 +159,8 @@ async function handlePopupMessage(message){
 }
 
 async function localAgentFetch(route, method='GET', payload=null, token=null) {
-  const stored = token ? {token} : await chrome.storage.local.get(LOCAL_TOKEN_KEY);
-  const auth = stored.token;
+  const stored = token ? null : await chrome.storage.local.get(LOCAL_TOKEN_KEY);
+  const auth = token || stored?.[LOCAL_TOKEN_KEY];
   if (!auth) throw new Error('Agente de programação local não conectado. Inicie start-nex-agent.bat e conecte o token no NEX.');
   const response = await fetch(LOCAL_AGENT_URL + route, {
     method,
