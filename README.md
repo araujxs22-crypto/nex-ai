@@ -1,6 +1,6 @@
-# NEX Core 0.4.0
+# NEX AI · Core 0.5.0 · Browser Agent 1.4.0
 
-Módulo independente, offline e sem APIs pagas para ser integrado a uma aplicação HTML/JavaScript existente. Ele não altera nem recria a interface do NEX AI.
+Aplicação web com núcleo modular em JavaScript, motores de código e planejamento 3D, memória local e uma extensão Chrome Manifest V3 para ações explícitas em uma aba autorizada. O Core funciona localmente; recursos de pesquisa na interface dependem de conexão com a internet.
 
 ## O que foi implementado
 
@@ -35,6 +35,24 @@ node tests/run-tests.mjs
 ```
 
 O teste comprova: pesos mudando, perda diminuindo, acurácia, persistência/restauração, memória, interpretação de comandos, plano 3D/vídeo e análise de programação. No Chrome, abra `demo/index.html` através de um servidor local simples ou de um ambiente que permita módulos ES; não é necessário instalar dependências do projeto.
+
+## Agente de navegador · extensão Chrome 1.4.0
+
+A extensão em `extension/sala-do-futuro/` conecta o site NEX a uma única aba HTTPS autorizada pelo usuário. O agente aceita comandos explícitos de leitura, hover textual, clique seguro, preenchimento de campos, seleção de radio/checkbox, voltar, avançar e recarregar.
+
+- `src/browser/command-parser.js` interpreta comandos curtos e explícitos. Pedidos compostos ainda não são um plano autônomo.
+- `extension/sala-do-futuro/background.js` valida pareamento, aba autorizada, pausa e roteia comandos.
+- `extension/sala-do-futuro/page-actions.js` lê texto e controles visíveis, localiza elementos, preenche campos e seleciona opções com verificação.
+- Depois de `READ_PAGE`, `index.html` guarda o conteúdo lido e o envia ao parser de atividades escolares para manter o contexto em perguntas seguintes.
+
+**Limitações atuais:** o NEX ainda não inclui um LLM generativo próprio. O classificador MLP identifica intenções, mas não raciocina como Claude/GPT. O agente não transforma instruções longas em planos independentes de várias etapas; a pesquisa disponível na interface é limitada; e eventos sintéticos de mouse não garantem CSS `:hover` físico. Ações de envio/finalização não devem ser acionadas automaticamente.
+
+Exemplos de comandos explícitos no chat:
+- `ler página`
+- `passar mouse sobre Tarefa 5`
+- `clicar em Pesquisar`
+- `preencher campo Nome com Kaue`
+- `marcar Certo na questão 2`
 
 ## Integração no HTML existente
 
@@ -89,4 +107,4 @@ demo/index.html              demonstração offline
 
 ## Aplicação integrada
 
-`index.html` é a entrada do site e preserva a interface existente. Importa `src/index.js`, inicializa o NEX Core 0.4.0, treina e calibra o modelo na primeira abertura e persiste os pesos em `localStorage`. Pedidos de programação usam o Code Engine; pedidos de cena usam o Video Engine. O Core não executa código arbitrário nem grava arquivos diretamente no computador. Para publicar com GitHub Pages, configure a publicação pela raiz da branch que contém `index.html`.
+`index.html` é a entrada do site e preserva a interface existente. Importa `src/index.js`, inicializa o NEX Core 0.5.0, treina e calibra o modelo na primeira abertura e persiste os pesos em `localStorage`. Pedidos de programação usam o Code Engine; pedidos de cena usam o Video Engine. O Core não executa código arbitrário nem grava arquivos diretamente no computador. Para publicar com GitHub Pages, configure a publicação pela raiz da branch que contém `index.html`.
