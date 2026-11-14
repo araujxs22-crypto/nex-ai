@@ -111,3 +111,72 @@ $('clear').addEventListener('click', () => {
   $('copy').disabled = true;
   report('Conteúdo limpo.');
 });
+
+
+// Controles da ponte NEX ↔ extensão.
+const agentStatus=document.getElementById('agentStatus');
+const pairingCodeInput=document.getElementById('pairingCode');
+const pairingCodeRow=document.getElementById('pairCodeRow');
+let activeTabInfo=null;
+
+async function popupAgentMessage(action,extra={}){
+  const response=await chrome.runtime.sendMessage({source:'nex-popup',action,...extra});
+  if(!response||!response.ok)throw new Error(response&&response.error||'Falha ao comunicar com o agente.');
+  return response.data;
+}
+function showAgentStatus(message){if(agentStatus)agentStatus.textContent=message;}
+async function loadAgentStatus(){
+  try{
+    const status=await popupAgentMessage('GET_STATUS');
+    showAgentStatus((status.authorized?'Aba autorizada: '+status.authorizedOrigin+'. ':'Nenhuma aba autorizada. ')+(status.paired?'Pareada. ':'Aguardando pareamento. ')+(status.paused?'Pausada.':'Ativa.'));
+    document.getElementById('createPairingCode').disabled=!status.authorized;
+  }catch(error){showAgentStatus(error.message);}
+}
+
+document.getElementById('authorizeAgentTab')?.addEventListener('click',async()=>{
+  try{
+    const tab=activeTabInfo;
+    if(!tab||!tab.id||!tab.url)throw new Error('Não consegui identificar a aba. Feche e abra o popup novamente.');
+    const current=new URL(tab.url);
+    if(current.protocol!=='https:'||current.username||current.password)throw new Error('Abra uma página HTTPS sem usuário ou senha na URL.');
+    const response=await popupAgentMessage('AUTHORIZE_TAB',{tabId:tab.id,expectedOrigin:current.origin});
+    showAgentStatus('Aba autorizada: '+response.authorizedOrigin+'. Agora gere um código.');
+    document.getElementById('createPairingCode').disabled=false;
+    await loadAgentStatus();
+  }catch(error){showAgentStatus(error.message);}
+});
+
+document.getElementById('createPairingCode')?.addEventListener('click',async()=>{
+  try{
+    const result=await popupAgentMessage('CREATE_PAIRING_CODE');
+    pairingCodeInput.value=result.code;
+    pairingCodeRow.hidden=false;
+    showAgentStatus('Código válido por 5 minutos. Cole-o na seção Agente de Navegador do site NEX.');
+  }catch(error){showAgentStatus(error.message);}
+});
+document.getElementById('copyPairingCode')?.addEventListener('click',async()=>{
+  try{await navigator.clipboard.writeText(pairingCodeInput.value);showAgentStatus('Código copiado. Cole-o no NEX.');}
+  catch{showAgentStatus('Não foi possível copiar. Selecione e copie o código manualmente.');}
+});
+document.getElementById('pauseAgent')?.addEventListener('click',async()=>{
+  try{const result=await popupAgentMessage('KILL_SWITCH');showAgentStatus(result.message||'Agente pausado. Novos comandos bloqueados.');}
+  catch(error){showAgentStatus(error.message);}
+});
+document.getElementById('resumeAgent')?.addEventListener('click',async()=>{
+  try{await popupAgentMessage('RESUME');showAgentStatus('Agente retomado manualmente.');}
+  catch(error){showAgentStatus(error.message);}
+});
+document.getElementById('disconnectAgent')?.addEventListener('click',async()=>{
+  try{
+    await popupAgentMessage('DISCONNECT');
+    pairingCodeRow.hidden=true;
+    pairingCodeInput.value='';
+    showAgentStatus('Pareamento e autorização removidos.');
+    document.getElementById('createPairingCode').disabled=true;
+  }catch(error){showAgentStatus(error.message);}
+});
+(async()=>{
+  try{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});activeTabInfo=tab||null;}
+  catch{activeTabInfo=null;}
+  await loadAgentStatus();
+})();
