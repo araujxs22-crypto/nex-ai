@@ -17,7 +17,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://nex-ai-preview.vercel.app/*"
+        "https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app/*"
       ],
       "js": [
         "bridge.js"
