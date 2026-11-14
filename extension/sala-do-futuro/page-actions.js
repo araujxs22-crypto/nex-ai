@@ -7,6 +7,96 @@ export function readPageOnPage() {
   };
 }
 
+
+
+export async function hoverElementOnPage(needle) {
+  const normalize = value => String(value || '').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+  const wanted = normalize(needle);
+  if (!wanted) return {ok:false,message:'Informe o texto do cartão ou elemento para posicionar o mouse.'};
+
+  const candidates = Array.from(document.querySelectorAll(
+    'a[href],button,[role="button"],[role="link"],[onclick],[tabindex],div,article,li'
+  ));
+  const visible = candidates.filter(element => {
+    const rect = element.getBoundingClientRect?.();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+    if (element.hidden || element.disabled || normalize(element.getAttribute?.('aria-hidden')) === 'true') return false;
+    const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+    if (style && (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0')) return false;
+    const tag = String(element.tagName || '').toLowerCase();
+    const role = normalize(element.getAttribute?.('role'));
+    let pointerCursor = false;
+    try { pointerCursor = style?.cursor === 'pointer'; } catch {}
+    return tag === 'a' || tag === 'button' || role === 'button' || role === 'link' ||
+      Boolean(element.hasAttribute?.('onclick')) ||
+      (element.hasAttribute?.('tabindex') && element.getAttribute('tabindex') !== '-1') ||
+      pointerCursor;
+  });
+
+  const textOf = element => element.getAttribute?.('aria-label') ||
+    element.innerText || element.textContent || element.title || '';
+  const exact = visible.filter(element => normalize(textOf(element)) === wanted);
+  let matches = exact.length ? exact : visible.filter(element => normalize(textOf(element)).includes(wanted));
+  if (!matches.length) return {ok:false,message:'Não encontrei um cartão ou elemento visível com esse texto.'};
+
+  // Keep the deepest match within one card, but do not guess between separate matches.
+  matches = matches.filter(element =>
+    !matches.some(other => other !== element && element.contains?.(other))
+  );
+  if (matches.length > 1) {
+    return {ok:false,message:'Encontrei mais de um cartão com esse texto. Seja mais específico.'};
+  }
+
+  const found = matches[0];
+  found.scrollIntoView?.({behavior:'auto',block:'center',inline:'nearest'});
+  const rect = found.getBoundingClientRect();
+  const clientX = Math.round(rect.left + rect.width / 2);
+  const clientY = Math.round(rect.top + rect.height / 2);
+
+  const pointerInit = {
+    bubbles:true,cancelable:true,composed:true,pointerId:1,pointerType:'mouse',
+    isPrimary:true,clientX,clientY,button:0,buttons:0
+  };
+  const mouseInit = {bubbles:true,cancelable:true,composed:true,clientX,clientY,button:0,buttons:0};
+  const dispatch = (type, init, isPointer=false) => {
+    let event;
+    if (isPointer && typeof PointerEvent === 'function') event = new PointerEvent(type,init);
+    else if (!isPointer && typeof MouseEvent === 'function') event = new MouseEvent(type,init);
+    else event = new Event(type,{bubbles:init.bubbles,cancelable:init.cancelable});
+    found.dispatchEvent(event);
+  };
+
+  dispatch('pointerover',pointerInit,true);
+  dispatch('pointerenter',{...pointerInit,bubbles:false},true);
+  dispatch('pointermove',pointerInit,true);
+  dispatch('mouseover',mouseInit);
+  dispatch('mouseenter',{...mouseInit,bubbles:false});
+  dispatch('mousemove',mouseInit);
+
+  // Give page event handlers a moment to reveal menus/cards before inspecting controls.
+  await new Promise(resolve => setTimeout(resolve,180));
+  const controls = Array.from(document.querySelectorAll('a[href],button,[role="button"],[role="link"]'))
+    .filter(element => {
+      const rect = element.getBoundingClientRect?.();
+      if (!rect || rect.width <= 0 || rect.height <= 0 || element.hidden) return false;
+      const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+      return !style || (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0');
+    })
+    .map(element => String(element.getAttribute?.('aria-label') || element.innerText || element.textContent || element.title || '').replace(/\s+/g,' ').trim())
+    .filter(Boolean)
+    .filter((label,index,all) => all.indexOf(label) === index)
+    .slice(0,15);
+
+  return {
+    ok:true,
+    message:'Cartão localizado e rolado até o centro. Eventos de mouse foram enviados; nenhum botão foi clicado.',
+    target:String(textOf(found)).replace(/\s+/g,' ').trim().slice(0,240),
+    visibleControls:controls,
+    note:'Eventos sintéticos podem acionar handlers JavaScript, mas não ativam necessariamente CSS :hover que exige o cursor físico.'
+  };
+}
+
 export function clickElementOnPage(needle) {
   const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
   const wanted = normalize(needle);
