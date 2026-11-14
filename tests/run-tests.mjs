@@ -13,6 +13,7 @@ import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UN
 import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';
 import {NEX_APP_ORIGIN, isNexAppOrigin, isSafeHttpsUrl, isSafePairingCode, validateBrowserCommand} from '../extension/sala-do-futuro/protocol.js';
 import {clickElementOnPage, fillFieldOnPage} from '../extension/sala-do-futuro/page-actions.js';
+import {parseNexBrowserCommand} from '../src/browser/command-parser.js';
 
 
 assert.equal(isSupportedPageUrl('https://saladofuturo.educacao.sp.gov.br/'), true);
@@ -38,6 +39,17 @@ assert.equal(validateBrowserCommand({type:'NAVIGATE',url:'https://user:pass@exam
 assert.equal(validateBrowserCommand({type:'FILL_FIELD',field:'senha',value:'x'}).ok,false);
 assert.equal(validateBrowserCommand({type:'FILL_FIELD',field:'Nome',value:'Kaue'}).ok,true);
 assert.equal(validateBrowserCommand({type:'RUN_SCRIPT',code:'alert(1)'}).ok,false);
+
+assert.deepEqual(parseNexBrowserCommand('ler página'), {type:'READ_PAGE'});
+assert.deepEqual(parseNexBrowserCommand('LEIA A PÁGINA'), {type:'READ_PAGE'});
+assert.deepEqual(
+  parseNexBrowserCommand('Use a extensão do navegador para ler o conteúdo visível da aba atual. Retorne todo o texto da página, sem tentar clicar, preencher ou enviar nada.'),
+  {type:'READ_PAGE'}
+);
+assert.deepEqual(parseNexBrowserCommand('NEX abrir https://example.com'), {type:'NAVIGATE',url:'https://example.com'});
+assert.equal(parseNexBrowserCommand('leia a página e clique em Enviar'), null,
+  'uma solicitação que mistura leitura com ações deve exigir um comando explícito separado');
+
 
 
 function mockBrowserElement({
