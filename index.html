@@ -200,7 +200,29 @@ async function sendMsg(){
   await window.nexReady;
   const fenced=text.includes(String.fromCharCode(96).repeat(3));
   response=fenced?{type:'code',result:window.nexCore.code.process(text)}:window.nexCore.ask(text);
-  answer=window.formatNexResponse(response);
+  const useLocalLLM=response?.type==='clarification'||(response?.type==='chat'&&Boolean(response.classification));
+  if(useLocalLLM&&window.generateNexLocalReply){
+   try{
+    answer=await window.generateNexLocalReply({
+     text,
+     history:currentMessages.slice(0,-1).slice(-4),
+     memories:response.memories||window.nexCore.memory.search(text,3)
+    },event=>{
+     const status=$('nex-core-status');
+     if(status&&event?.message){
+      status.textContent='LLM LOCAL · '+String(event.message).slice(0,54);
+      status.title=String(event.message);
+     }
+    });
+   }catch(llmError){
+    console.warn('NEX Local LLM indisponível:',llmError);
+    answer=response.text||'O modelo local não iniciou. O roteador e as ferramentas do NEX continuam disponíveis. Detalhe: '+llmError.message;
+    const status=$('nex-core-status');
+    if(status){status.textContent='CORE 0.6.0 · LLM LOCAL INDISPONÍVEL';status.title=llmError.message;}
+   }
+  }else{
+   answer=window.formatNexResponse(response);
+  }
   if(response.type==='video-plan'){$('scene-prompt').value=text;window.nexLastVideoPlan=response.result;}
  }catch(e){answer='Erro no NEX Core: '+e.message}
  const messageNode=appendMessage(answer,'nex','NEX CORE 0.5.0');
@@ -570,19 +592,23 @@ import {parseNexBrowserCommand} from './src/browser/command-parser.js';
 window.nexParseBrowserCommand = parseNexBrowserCommand;
 import { NexCore } from './src/index.js';
 import {buildProjectPreview} from './src/engines/project-preview.js';
+import {generateLocalReply, LOCAL_MODEL, getLocalLLMInfo} from './src/local-llm.js';
 const core = new NexCore();
+window.generateNexLocalReply = generateLocalReply;
+window.nexLocalModelInfo = LOCAL_MODEL;
+window.nexGetLocalLLMInfo = getLocalLLMInfo;
 window.nexBuildProjectPreview = buildProjectPreview;
 window.nexCore = core;
 const status = document.getElementById('nex-core-status');
 window.formatNexResponse = (r) => {
  if (!r) return 'Core sem resposta.';
  if (r.type === 'clarification' || r.type === 'chat' || r.type === 'school-task' || r.type === 'school-question') return r.text;
- if (r.type === 'video-plan') return 'VIDEO ENGINE 0.5.0 — PLANO DE CENA\n' + JSON.stringify(r.result,null,2) + '\n\nO motor planeja; ainda não gera o vídeo final.';
+ if (r.type === 'video-plan') return 'VIDEO ENGINE 0.6.0 — PLANO DE CENA\n' + JSON.stringify(r.result,null,2) + '\n\nO motor planeja; ainda não gera o vídeo final.';
  if (r.type === 'memory') return 'Memória salva. ' + JSON.stringify(r.result);
  if (r.type === 'memory-search') return 'Busca na memória: ' + JSON.stringify(r.result);
  if (r.type === 'code') {
   const x=r.result;
-  if(x.type==='analysis') return 'CODE ENGINE 0.4.0 — '+x.result.language+'\n'+x.result.summary+'\n'+x.result.diagnostics.map(d=>'['+d.severity+'] L'+d.line+': '+d.message+' '+d.suggestion).join('\n')+'\nTestes: '+x.result.testPlan.command;
+  if(x.type==='analysis') return 'CODE ENGINE 0.6.0 — '+x.result.language+'\n'+x.result.summary+'\n'+x.result.diagnostics.map(d=>'['+d.severity+'] L'+d.line+': '+d.message+' '+d.suggestion).join('\n')+'\nTestes: '+x.result.testPlan.command;
   if(x.type==='scaffold') return 'Projeto '+(x.kind||x.language)+' preparado.\nArquivos: '+x.files.join(', ')+'\nTeste: '+x.testCommand+'\n'+(x.notes||[]).join(' ')+(x.fileContents?.['index.html']?'\nUse “Visualizar projeto” para abrir a prévia isolada.':'')+'\nArquivos preparados em memória; os arquivos ainda não foram gravados no computador.';
  }
  return JSON.stringify(r,null,2);
@@ -591,8 +617,8 @@ window.nexReady = (async()=>{
  await new Promise(resolve=>setTimeout(resolve,50));
  let restored=false;
  try { restored=core.loadModel(); } catch(e) { console.warn(e); }
- if(!restored){ core.train({epochs:500,patience:60}); core.calibrate({minKnownCoverage:0.75}); core.saveModel(); }
- status.textContent='CORE 0.5.0 · ONLINE'; status.style.borderColor='#3f806d';
+ if(!restored){ core.train({epochs:240,patience:36,batchSize:12}); core.calibrate({minKnownCoverage:0.75}); core.saveModel(); }
+ status.textContent='CORE 0.6.0 · MLP ONLINE · LLM LOCAL SOB DEMANDA'; status.style.borderColor='#3f806d';
  console.info('NEX Core pronto',core.status); return true;
 })();
 </script>
