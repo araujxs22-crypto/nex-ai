@@ -21,6 +21,10 @@ export function clickElementOnPage(needle) {
     if (tag === 'button' && type !== 'button') return false;
     if (tag === 'input' && type !== 'button') return false;
     if (tag !== 'a' && element.closest?.('form')) return false;
+    const actionLabel = normalize([
+      element.getAttribute?.('aria-label'),element.innerText,element.textContent,element.value,element.title
+    ].join(' '));
+    if (/\b(comprar|buy|checkout|pagar|pagamento|payment|finalizar|confirmar|enviar|send|publicar|postar|excluir|apagar|delete|remover|remove|enviar mensagem)\b/i.test(actionLabel)) return false;
     if (tag === 'a') {
       const href = String(element.getAttribute?.('href') || '');
       if (!href || /^\s*(javascript:|mailto:|tel:|data:)/i.test(href)) return false;
@@ -70,7 +74,7 @@ export function fillFieldOnPage(needle, text) {
     const autocomplete = normalize(element.getAttribute?.('autocomplete'));
     const sensitiveAutocomplete = ['current-password','new-password','one-time-code','cc-number','cc-csc','cc-exp','cc-exp-month','cc-exp-year'];
     if (sensitiveAutocomplete.includes(autocomplete)) return false;
-    const sensitiveHint = normalize([element.name,element.id,element.placeholder,element.getAttribute?.('aria-label'),autocomplete].join(' ')).replace(/[._-]/g,' ');
+    const sensitiveHint = [element.name,element.id,element.placeholder,element.getAttribute?.('aria-label'),autocomplete].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,' ').toLocaleLowerCase().replace(/\s+/g,' ').trim().replace(/[._-]/g,' ');
     if (/\b(password|passwd|passcode|senha|token|otp|one time|verification|verificacao|cvv|cvc|credit card|cartao|card number)\b/i.test(sensitiveHint)) return false;
     const rect = element.getBoundingClientRect?.();
     return Boolean(rect && rect.width > 0 && rect.height > 0);
