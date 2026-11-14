@@ -29,7 +29,7 @@ export function parseNexBrowserCommand(value) {
   if ((match = /^(?:nex )?(?:abrir|navegar(?: para)?) (https:\/\/\S+)$/i.exec(text))) {
     return {type:'NAVIGATE',url:match[1]};
   }
-  if ((match = /^(?:nex )?clicar em (.+)$/i.exec(text))) {
+  if ((match = /^(?:nex )?(?:clicar|clique) (?:em|no|na) (.+)$/i.exec(text))) {
     return {type:'CLICK',target:match[1].replace(/^["']|["']$/g,'').trim()};
   }
   if ((match = /^(?:nex )?preencher (.*?) com ([\s\S]+)$/i.exec(text))) {
