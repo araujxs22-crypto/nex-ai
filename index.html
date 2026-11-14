@@ -151,6 +151,10 @@ async function sendMsg(){
     const result=await window.nexBrowserAgent.run(browserCommand);
     if(browserCommand.type==='READ_PAGE'){
      answer='Página: '+(result.title||'Sem título')+'\nURL: '+(result.url||'')+'\n\n'+(result.text||'Nenhum texto visível encontrado.');
+    }else if(browserCommand.type==='HOVER'){
+     answer=(result.message||'Elemento localizado.')+'\nElemento: '+(result.target||browserCommand.target);
+     if(result.visibleControls?.length)answer+='\nControles visíveis: '+result.visibleControls.join(' · ');
+     if(result.note)answer+='\nNota: '+result.note;
     }else if(result.message){answer=result.message;}
     else{answer='Ação concluída.';}
    }
