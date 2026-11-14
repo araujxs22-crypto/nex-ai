@@ -1,13 +1,13 @@
-# NEX AI · Core 0.5.0 · Browser Agent 1.4.0
+# NEX AI · Core 0.6.0 · Browser Agent 1.4.0
 
 Aplicação web com núcleo modular em JavaScript, motores de código e planejamento 3D, memória local e uma extensão Chrome Manifest V3 para ações explícitas em uma aba autorizada. O Core funciona localmente; recursos de pesquisa na interface dependem de conexão com a internet.
 
 ## O que foi implementado
 
-- **Rede neural própria:** MLP pequena em JavaScript puro, com camada oculta `tanh`, saída `softmax`, entropia cruzada, backpropagation, atualização de pesos, métricas e serialização.
+- **Rede neural própria:** TinyMLP em JavaScript puro para classificar intenções. Usa TF-IDF com unigramas e bigramas, normalização L2, regularização L2, clipping de gradientes, validação, early stopping e persistência versionada. Ela é um roteador de ferramentas, não um modelo generativo.
 - **NEX Video Engine:** transforma uma descrição em um plano JSON de cena, objetos, câmera, iluminação e timeline. É um planejador, não um renderizador ou gerador de vídeo.
 - **NEX Code Engine 0.4.0:** análise estrutural leve para JavaScript, Python e HTML; diagnósticos com severidade, linha, coluna e sugestão; detecção de delimitadores/string sem fechamento, atribuições incompletas, cabeçalhos Python sem dois-pontos, tags HTML incompatíveis e ids duplicados; scaffolds JavaScript/Python com arquivos de teste e comandos sugeridos; os projetos gerados são executados em diretórios temporários no CI para validar os testes incluídos.
-- **NEX Chat:** classifica intenções e coordena vídeo, código e memória. Conversação geral é deliberadamente limitada e local.
+- **NEX Chat + LLM local:** a TinyMLP encaminha intenções; mensagens gerais/ambíguas podem usar o SmolLM2-135M-Instruct quantizado em Q4, executado no navegador via Transformers.js/ONNX Runtime Web. A inferência é local e não usa API paga. O download inicial do runtime e dos pesos exige internet e fica no cache do navegador.
 - **Memória:** armazenamento persistente em `localStorage` no navegador, com busca lexical e exportação/importação JSON. Memória não altera os pesos da rede.
 
 
@@ -19,6 +19,28 @@ Aplicação web com núcleo modular em JavaScript, motores de código e planejam
 - Code Engine gera também um scaffold de site responsivo (HTML/CSS/JS) com testes executáveis, além dos scaffolds JavaScript e Python.
 - Video Engine produz planos v2 com múltiplos objetos, posições, câmera, ambiente, iluminação, animação e timeline. O plano não equivale a renderização nem geração de vídeo.
 - Métricas de rejeição separam rejeição por limiar de uma previsão da classe "unknown".
+
+## LLM local e arquitetura híbrida · Core 0.6.0
+
+O NEX agora separa duas responsabilidades:
+
+1. **TinyMLP:** classifica a intenção e encaminha pedidos claros para os motores de código, vídeo, memória ou navegador.
+2. **LLM local:** gera respostas para conversa geral e intenções que o classificador não consegue resolver com confiança.
+
+Perfil inicial: `onnx-community/SmolLM2-135M-Instruct-ONNX`, Q4, CPU/WASM. O carregamento é sob demanda; a primeira utilização baixa aproximadamente 200 MB. Depois, o browser pode reutilizar o cache. A qualidade é limitada por ser um modelo de 135 milhões de parâmetros e pode ser lenta no computador com 4 GB de RAM.
+
+O código também registra um perfil experimental para `onnx-community/Qwen3-0.6B-ONNX` em WebGPU, mas não é o padrão para máquinas com pouca memória. O LLM não foi treinado pelo projeto: são pesos pré-treinados de terceiros. O diferencial do NEX está em coordenar esse modelo com os motores, a memória e a extensão.
+
+**Privacidade e limites:** as mensagens usadas na inferência são processadas no navegador; runtime e pesos vêm de CDN/Hugging Face no primeiro uso. A inferência não chama um endpoint de geração pago. O LLM ainda não tem um planejador autônomo completo nem executa ferramentas por conta própria; as ferramentas continuam sob o controle do roteador e do agente.
+
+## Melhorias da TinyMLP
+
+- Vetorização com unigramas + bigramas, para preservar parte da ordem das palavras.
+- Pesos IDF calculados somente no conjunto de treino e normalização L2.
+- Clipping global de gradientes para conter atualizações instáveis.
+- Weight decay para reduzir sobreajuste.
+- Mini-lotes e early stopping pela validação.
+- O snapshot do classificador salva também a versão do vetorizador e os pesos IDF; snapshots antigos são descartados e a rede é treinada novamente com o formato novo.
 
 ## Limitações honestas
 
@@ -34,7 +56,7 @@ No ambiente de desenvolvimento, execute:
 node tests/run-tests.mjs
 ```
 
-O teste comprova: pesos mudando, perda diminuindo, acurácia, persistência/restauração, memória, interpretação de comandos, plano 3D/vídeo e análise de programação. No Chrome, abra `demo/index.html` através de um servidor local simples ou de um ambiente que permita módulos ES; não é necessário instalar dependências do projeto.
+O teste comprova: pesos mudando, vetorização TF-IDF com bigramas, clipping/regularização, calibração, persistência/restauração, memória, integração do adaptador LLM, interpretação de comandos, plano 3D/vídeo e análise de programação. No Chrome, abra `demo/index.html` através de um servidor local simples ou de um ambiente que permita módulos ES; não é necessário instalar dependências do projeto.
 
 ## Agente de navegador · extensão Chrome 1.4.0
 
@@ -107,4 +129,4 @@ demo/index.html              demonstração offline
 
 ## Aplicação integrada
 
-`index.html` é a entrada do site e preserva a interface existente. Importa `src/index.js`, inicializa o NEX Core 0.5.0, treina e calibra o modelo na primeira abertura e persiste os pesos em `localStorage`. Pedidos de programação usam o Code Engine; pedidos de cena usam o Video Engine. O Core não executa código arbitrário nem grava arquivos diretamente no computador. Para publicar com GitHub Pages, configure a publicação pela raiz da branch que contém `index.html`.
+`index.html` é a entrada do site e preserva a interface existente. Importa `src/index.js`, inicializa o NEX Core 0.6.0, treina e calibra o modelo na primeira abertura e persiste os pesos em `localStorage`. Pedidos de programação usam o Code Engine; pedidos de cena usam o Video Engine. O Core não executa código arbitrário nem grava arquivos diretamente no computador. Para publicar com GitHub Pages, configure a publicação pela raiz da branch que contém `index.html`.
