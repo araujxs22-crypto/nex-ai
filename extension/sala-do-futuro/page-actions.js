@@ -58,10 +58,11 @@ export function clickElementOnPage(needle) {
   const exact = visible.filter(element => normalize(textOf(element)) === wanted);
   let matches = exact.length ? exact : visible.filter(element => normalize(textOf(element)).includes(wanted));
   if (matches.length === 0) return {ok:false, message:'Não encontrei um controle ou cartão clicável visível com esse texto.'};
-  // Prefer the smallest matching clickable card/control over its page container.
-  const lengths = matches.map(element => normalize(textOf(element)).length);
-  const shortest = Math.min(...lengths);
-  matches = matches.filter((element,index) => lengths[index] === shortest);
+  // Remove only matching ancestors that contain another matching candidate.
+  // Separate controls with similar labels remain ambiguous and are never guessed.
+  matches = matches.filter(element =>
+    !matches.some(other => other !== element && element.contains?.(other))
+  );
   if (matches.length > 1) {
     const names = matches.slice(0, 4).map(textOf).filter(Boolean).join(' · ');
     return {ok:false, message:'Encontrei mais de um elemento. Use um texto mais específico: ' + names};
