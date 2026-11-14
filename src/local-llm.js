@@ -142,6 +142,24 @@ function extractAnswer(result) {
   return '';
 }
 
+export function isDegenerateAnswer(value) {
+  const tokens=String(value||'').toLocaleLowerCase('pt-BR').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').match(/[a-z0-9]{2,}/g)||[];
+  if(tokens.length<12)return false;
+  const ignored=new Set(['para','como','com','uma','umas','uns','que','the','and','you','this','that','are','was','is','por','dos','das','nos','nas','seu','sua','seus','suas','ele','ela','eles','elas','voce','tambem','mais','muito','pode','ser','ter']);
+  const counts=new Map();
+  for(const token of tokens)if(!ignored.has(token))counts.set(token,(counts.get(token)||0)+1);
+  const meaningful=tokens.filter(token=>!ignored.has(token));
+  if(meaningful.length>=12&&new Set(meaningful).size/meaningful.length<0.42)return true;
+  if([...counts.values()].some(count=>count>=5))return true;
+  const grams=new Map();
+  for(let i=0;i<tokens.length-2;i++){
+    const gram=tokens.slice(i,i+3).join(' ');
+    grams.set(gram,(grams.get(gram)||0)+1);
+  }
+  return [...grams.values()].some(count=>count>=3);
+}
+
 export async function generateLocalReply(
   {text, history = [], memories = [], modelId = LOCAL_MODEL.id} = {},
   onProgress = () => {}
@@ -154,15 +172,20 @@ export async function generateLocalReply(
     notify(onProgress, 'generating', 'O NEX está pensando localmente…');
     const messages = buildMessages({text, history, memories});
     const result = await model(messages, {
-      max_new_tokens: 112,
+      max_new_tokens: 80,
       do_sample: false,
-      repetition_penalty: 1.08
+      repetition_penalty: 1.18,
+      no_repeat_ngram_size: 3
     });
     const answer = extractAnswer(result)
       .replace(/<think>[\s\S]*?<\/think>/gi, '')
       .replace(/<\|im_end\|>[\s\S]*$/,'')
       .trim();
     if (!answer) throw new Error('O modelo local retornou uma resposta vazia.');
+    if (isDegenerateAnswer(answer)) {
+      notify(onProgress, 'degraded', 'A resposta local ficou incoerente; evitando exibir texto sem sentido.');
+      return 'Não consegui formular uma resposta confiável com o modelo local. Ele é pequeno e ainda tem dificuldade com português. Para programação e navegador, envie uma ação específica para os agentes especializados.';
+    }
     notify(onProgress, 'complete', 'Resposta gerada localmente.');
     return answer;
   };
