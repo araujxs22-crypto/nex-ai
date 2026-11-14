@@ -144,6 +144,12 @@ assert.equal(salaExtensionManifest.background.service_worker, 'background.js');
 assert.equal(salaExtensionManifest.background.type, 'module');
 assert.equal(salaExtensionManifest.content_scripts[0].matches[0], 'https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app/*');
 assert.equal(salaExtensionManifest.host_permissions, undefined);
+const browserBackgroundSource = readFileSync(new URL('../extension/sala-do-futuro/background.js', import.meta.url), 'utf8');
+assert.match(browserBackgroundSource, /case 'COMMAND': return queueCommand\(message\.payload\);/,
+  'o bridge deve encaminhar o envelope do comando sem embrulhá-lo duas vezes');
+assert.doesNotMatch(browserBackgroundSource, /case 'COMMAND': return \{ok:true,data:await queueCommand/,
+  'o bridge não deve criar uma resposta aninhada');
+
 
 const codeEngine = new NexCodeEngine();
 
