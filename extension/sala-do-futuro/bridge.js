@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const APP_ORIGIN='https://nex-ai-preview.vercel.app';
+  const APP_ORIGIN='https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app';
   const CHANNEL='nex-browser-agent';
   window.addEventListener('message',event=>{
     if(event.source!==window||event.origin!==APP_ORIGIN)return;
