@@ -202,7 +202,6 @@ async function sendMsg(){
  if(browserCommand){
   let answer='';
   setActivity(browserStepLabel(browserCommand));
-  let answer='';
   try{
    if(!window.nexBrowserAgent)throw new Error('Cliente da extensão ainda não carregou. Recarregue a página do NEX.');
    if(browserCommand.type==='STATUS'){
