@@ -36,7 +36,6 @@ async function authorizeTab(tabId,expectedOrigin){
   state.authorizedTabId=tabId;
   state.authorizedOrigin=expected.origin;
   state.paused=true;
-  state.paired=false;
   state.pairingCode=null;
   state.pairingExpiresAt=0;
   await saveState(state);
@@ -59,10 +58,24 @@ async function createPairingCode(){
 
 async function requireAuthorizedTab(state){
   if(!Number.isInteger(state.authorizedTabId)||!state.authorizedOrigin)throw new Error('Nenhuma aba autorizada. Abra a extensão na página que deseja controlar e clique em “Autorizar esta aba”.');
-  const results=await chrome.scripting.executeScript({target:{tabId:state.authorizedTabId},func:getPageMeta});
+  let results;
+  try {
+    results=await chrome.scripting.executeScript({target:{tabId:state.authorizedTabId},func:getPageMeta});
+  } catch {
+    const latest=await getState();
+    latest.authorizedOrigin=null;
+    latest.paused=true;
+    await saveState(latest);
+    throw new Error('O Chrome bloqueou o acesso após uma mudança de site. Abra a extensão na aba de destino e autorize novamente.');
+  }
   const meta=results&&results[0]&&results[0].result;
-  if(!meta||!isSafeHttpsUrl(meta.url))throw new Error('A página autorizada não está mais disponível ou não usa HTTPS.');
-  if(meta.origin!==state.authorizedOrigin)throw new Error('A aba mudou de site. Abra a extensão nessa página e autorize-a novamente.');
+  if(!meta||!isSafeHttpsUrl(meta.url)||meta.origin!==state.authorizedOrigin){
+    const latest=await getState();
+    latest.authorizedOrigin=null;
+    latest.paused=true;
+    await saveState(latest);
+    throw new Error('A aba mudou de site ou deixou de usar HTTPS. Autorize novamente pelo popup da extensão.');
+  }
   return state.authorizedTabId;
 }
 
