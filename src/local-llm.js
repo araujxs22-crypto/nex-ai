@@ -26,7 +26,7 @@ export const LOCAL_MODEL_OPTIONS = Object.freeze([
     runtime: 'Transformers.js 3.8.1 / ONNX Runtime WebGPU',
     device: 'WebGPU',
     dtype: 'q4f16',
-    approximateDownload: 'aproximadamente 600 MB; varia conforme os arquivos carregados',
+    approximateDownload: 'modelo maior; tamanho total depende dos arquivos ONNX carregados',
     hardwareProfile: 'recomendado apenas para computadores com mais memória e WebGPU estável',
     privacy: 'A inferência ocorre no navegador. Os pesos são baixados do Hugging Face na primeira utilização.'
   })
