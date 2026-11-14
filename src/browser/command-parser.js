@@ -1,8 +1,8 @@
 const NORMALIZE = value => String(value || '')
   .normalize('NFD')
-  .replace(/[\\u0300-\\u036f]/g, '')
+  .replace(/[\u0300-\u036f]/g, '')
   .toLocaleLowerCase()
-  .replace(/\\s+/g, ' ')
+  .replace(/\s+/g, ' ')
   .trim();
 
 export function parseNexBrowserCommand(value) {
@@ -16,14 +16,21 @@ export function parseNexBrowserCommand(value) {
     return {type:'STATUS'};
   }
 
-  if (/^(?:nex )?(?:ler|leia) (?:a )?pagina$/.test(normalized)) return {type:'READ_PAGE'};
+  const asksToReadPage =
+    /\b(?:ler|leia|leitura)\b/.test(normalized) &&
+    /\b(?:pagina|aba|conteudo|texto)\b/.test(normalized) &&
+    !/\b(?:clicar|preencher|enviar|submeter|navegar|abrir)\b/.test(normalized);
+  if (asksToReadPage || /^(?:nex )?(?:ler|leia) (?:a )?pagina$/.test(normalized)) {
+    return {type:'READ_PAGE'};
+  }
+
   if ((match = /^(?:nex )?(?:abrir|navegar(?: para)?) (https:\/\/\S+)$/i.exec(text))) {
     return {type:'NAVIGATE',url:match[1]};
   }
   if ((match = /^(?:nex )?clicar em (.+)$/i.exec(text))) {
     return {type:'CLICK',target:match[1].replace(/^["']|["']$/g,'').trim()};
   }
-  if ((match = /^(?:nex )?preencher (.*?) com ([\\s\\S]+)$/i.exec(text))) {
+  if ((match = /^(?:nex )?preencher (.*?) com ([\s\S]+)$/i.exec(text))) {
     return {type:'FILL_FIELD',field:match[1].trim(),value:match[2]};
   }
   if (/^(?:nex )?voltar$/.test(normalized)) return {type:'BACK'};
