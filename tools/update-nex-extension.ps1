@@ -52,8 +52,21 @@ try {
   }
 
   Copy-Item -Path (Join-Path $source '*') -Destination $destination -Recurse -Force
+
+  $documents = [Environment]::GetFolderPath('MyDocuments')
+  $agentDestination = Join-Path $documents 'NEX-Agent'
+  $agentSource = Join-Path $repoFolder.FullName 'local-agent'
+  New-Item -ItemType Directory -Path $agentDestination -Force | Out-Null
+  $localAgentDestination = Join-Path $agentDestination 'local-agent'
+  New-Item -ItemType Directory -Path $localAgentDestination -Force | Out-Null
+  Copy-Item -Path (Join-Path $agentSource '*') -Destination $localAgentDestination -Recurse -Force
+  Copy-Item -LiteralPath (Join-Path $repoFolder.FullName 'start-nex-agent.bat') -Destination (Join-Path $agentDestination 'start-nex-agent.bat') -Force
+
   Write-Host ''
   Write-Host ('Extensao atualizada para NEX ' + $updatedManifest.version + '.') -ForegroundColor Green
+  Write-Host ('Agente de programacao local instalado em: ' + $agentDestination) -ForegroundColor Green
+  Write-Host 'Para iniciar o agente de programacao, execute start-nex-agent.bat nessa pasta.' -ForegroundColor Cyan
+  Write-Host 'O workspace de arquivos fica em Documentos\NEX-Workspace.' -ForegroundColor Gray
   Write-Host 'Agora abra chrome://extensions e clique em Atualizar nesta extensao.' -ForegroundColor Cyan
   Write-Host 'Mantenha a pasta selecionada carregada como extensao sem compactacao.' -ForegroundColor Gray
 }
