@@ -246,7 +246,8 @@ export function selectOptionOnPage(optionNeedle, questionNeedle = '') {
     const type = String(element.type || element.getAttribute?.('role') || '').toLowerCase();
     if (element.disabled || normalize(element.getAttribute?.('aria-disabled')) === 'true') return false;
     const label = element.closest?.('label');
-    return rectVisible(element) || (label && rectVisible(label));
+    const associatedLabel = Array.from(element.labels || []).find(rectVisible);
+    return rectVisible(element) || Boolean(associatedLabel) || (label && rectVisible(label));
   });
   const matches = scoped.filter(element => {
     const label = normalize(labelOf(element));
