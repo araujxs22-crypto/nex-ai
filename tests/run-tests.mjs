@@ -4,7 +4,8 @@ import {tmpdir} from 'node:os';
 import {join, dirname} from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {runInNewContext} from 'node:vm';
-import {NexCore, TinyMLP, NexMemory} from '../src/index.js';
+import {NexCore, TinyMLP, NexMemory, TextVectorizer} from '../src/index.js';
+import {LOCAL_MODEL, LOCAL_MODEL_OPTIONS, loadLocalLLM, generateLocalReply} from '../src/local-llm.js';
 import {NexCodeEngine} from '../src/engines/code-engine.js';
 import {buildProjectPreview} from '../src/engines/project-preview.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
@@ -421,6 +422,28 @@ try {
 assert.equal(codeEngine.testPlan('javascript').executionSupported, false);
 assert.throws(() => codeEngine.analyze('x', 'ruby'), /Linguagem não suportada/);
 
+assert.equal(LOCAL_MODEL.id, 'onnx-community/SmolLM2-135M-Instruct-ONNX');
+assert.equal(LOCAL_MODEL.dtype, 'q4');
+assert.equal(LOCAL_MODEL.device, 'WASM CPU');
+assert.equal(LOCAL_MODEL_OPTIONS.length, 2);
+assert.equal(LOCAL_MODEL_OPTIONS[1].id, 'onnx-community/Qwen3-0.6B-ONNX');
+assert.equal(typeof loadLocalLLM, 'function');
+assert.equal(typeof generateLocalReply, 'function');
+
+const vectorizerFixture = TextVectorizer.fromExamples([
+  {label:'code',text:'criar site'},
+  {label:'code',text:'criar aplicação'},
+  {label:'video',text:'renderizar cena'}
+]).vectorizer;
+assert.ok(vectorizerFixture.vocab.some(feature => feature === 'b:criar_site'),
+  'o vetorizador deve preservar pares de palavras');
+assert.ok(vectorizerFixture.idf.every(value => Number.isFinite(value) && value > 0),
+  'IDF deve conter pesos finitos e positivos');
+const phraseVector = vectorizerFixture.encode('criar site');
+assert.ok(Math.abs(Math.sqrt(phraseVector.reduce((sum,value)=>sum+value*value,0))-1)<1e-9,
+  'features devem ser normalizadas por norma L2');
+assert.equal(vectorizerFixture.recognizedRatio('criar site'),1);
+
 const core = new NexCore();
 const before = JSON.stringify(core.chat.model.toJSON());
 const history = core.train({epochs: 500, patience: 60});
@@ -739,7 +762,7 @@ const integratedSite = readFileSync(new URL('../index.html', import.meta.url), '
 assert.ok(integratedSite.includes("import { NexCore } from './src/index.js'"), 'site importa o Core');
 assert.ok(integratedSite.includes('window.nexCore = core'), 'site expõe a instância do Core');
 assert.ok(integratedSite.includes('window.nexReady'), 'site aguarda a inicialização');
-assert.ok(integratedSite.includes('NEX CORE 0.5.0'), 'site identifica a versão integrada');
+assert.ok(integratedSite.includes('NEX CORE 0.6.0'), 'site identifica a versão integrada');
 assert.ok(integratedSite.includes('id="nex-core-status"'), 'site exibe estado do Core');
 
 
