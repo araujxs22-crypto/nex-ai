@@ -78,8 +78,8 @@ export class NexSchoolTaskEngine {
     lines.push(
       '',
       'Posso analisar uma questão por vez e explicar como chegar à resposta.',
-      'Digite, por exemplo: “me ajuda na questão 1”.',
-      'A extensão apenas lê o conteúdo; não marca alternativas nem envia a atividade.'
+      'Com o agente de navegador pareado, também posso selecionar uma opção específica quando você informar a alternativa e a questão.',
+      'O NEX não finaliza nem envia a atividade sem autorização explícita.'
     );
     return lines.join('\n');
   }
