@@ -3,14 +3,14 @@ const CHANNEL='nex-browser-agent';
 const pending=new Map();
 let counter=0;
 
-function request(type,payload={}){
+function request(type,payload={},timeoutMs=8000){
   if(location.origin!==APP_ORIGIN)return Promise.reject(new Error('Abra o NEX pelo domínio oficial do projeto.'));
   return new Promise((resolve,reject)=>{
     const requestId='nex-'+Date.now()+'-'+(++counter);
     const timer=setTimeout(()=>{
       pending.delete(requestId);
       reject(new Error('A extensão não respondeu. Confira se está instalada e se o NEX está aberto no domínio oficial.'));
-    },8000);
+    },timeoutMs);
     pending.set(requestId,{resolve,reject,timer});
     window.postMessage({channel:CHANNEL,source:'nex-page',requestId,type,payload},APP_ORIGIN);
   });
@@ -32,7 +32,19 @@ window.nexBrowserAgent=Object.freeze({
   status:()=>request('STATUS'),
   connect:code=>request('PAIR',{code:String(code||'').trim()}),
   disconnect:()=>request('UNPAIR'),
-  run:command=>request('COMMAND',command)
+  run:command=>request('COMMAND',command),
+  localSetup:token=>request('LOCAL_SETUP',{token:String(token||'').trim()},15000),
+  localStatus:()=>request('LOCAL_STATUS',{},15000),
+  localCommand:(action,args={})=>request('LOCAL_COMMAND',{action,...args},75000)
+});
+window.nexCodingAgent=Object.freeze({
+  status:()=>window.nexBrowserAgent.localStatus(),
+  run:command=>window.nexBrowserAgent.localCommand(command.type,command),
+  saveScaffold:project=>{
+    const files=Object.entries(project?.fileContents||{}).map(([file,content])=>({path:file,content:String(content)}));
+    if(!files.length)throw new Error('O projeto não contém arquivos para gravar.');
+    return window.nexBrowserAgent.localCommand('scaffold',{files});
+  }
 });
 
 function setAgentStatus(text){
@@ -71,6 +83,27 @@ function installAgentUI(){
     catch(error){setAgentStatus(error.message);}
   });
   refreshButton?.addEventListener('click',refreshAgentStatus);
+  const localConnect=document.getElementById('nex-local-agent-connect');
+  const localRefresh=document.getElementById('nex-local-agent-refresh');
+  const localToken=document.getElementById('nex-local-agent-token');
+  const localStatus=document.getElementById('nex-local-agent-status');
+  const showLocalStatus=value=>{if(localStatus)localStatus.textContent=value;};
+  localConnect?.addEventListener('click',async()=>{
+    const token=localToken?.value.trim()||'';
+    if(!token){showLocalStatus('Cole o token exibido no terminal do agente local.');return;}
+    localConnect.disabled=true;
+    try{
+      const result=await window.nexBrowserAgent.localSetup(token);
+      if(localToken)localToken.value='';
+      showLocalStatus('Conectado. Workspace: '+result.workspace);
+    }catch(error){showLocalStatus(error.message);}
+    finally{localConnect.disabled=false;}
+  });
+  localRefresh?.addEventListener('click',async()=>{
+    try{const result=await window.nexCodingAgent.status();showLocalStatus('Agente ativo. Workspace: '+result.workspace);}
+    catch(error){showLocalStatus(error.message);}
+  });
+  localRefresh?.click();
   refreshAgentStatus();
 }
 installAgentUI();
