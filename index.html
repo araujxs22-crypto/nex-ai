@@ -125,34 +125,35 @@ function renderProjectPreview(){
     frame.srcdoc='<!doctype html><html lang="pt-BR"><body style="font:14px Arial;padding:24px;color:#202638">Falha ao montar a prévia isolada. '+String(error.message).replace(/[&<>"]/g,'')+'</body></html>';
   }
 }
-function parseNexBrowserCommand(value){
- const text=String(value||'').trim();
- let match;
- if(/^(?:nex\s+)?(?:ler|leia)\s+(?:a\s+)?p[aá]gina$/i.test(text))return {type:'READ_PAGE'};
- if((match=/^(?:nex\s+)?(?:abrir|navegar(?:\s+para)?)\s+(https:\/\/\S+)$/i.exec(text)))return {type:'NAVIGATE',url:match[1]};
- if((match=/^(?:nex\s+)?clicar\s+em\s+(.+)$/i.exec(text)))return {type:'CLICK',target:match[1].replace(/^["']|["']$/g,'').trim()};
- if((match=/^(?:nex\s+)?preencher\s+(.*?)\s+com\s+([\s\S]+)$/i.exec(text)))return {type:'FILL_FIELD',field:match[1].trim(),value:match[2]};
- if(/^(?:nex\s+)?voltar$/i.test(text))return {type:'BACK'};
- if(/^(?:nex\s+)?avan[cç]ar$/i.test(text))return {type:'FORWARD'};
- if(/^(?:nex\s+)?recarregar$/i.test(text))return {type:'RELOAD'};
- return null;
-}
 async function sendMsg(){
  const input=$('msg'),text=input.value.trim();
  if(!text)return;
  input.value='';input.style.height='32px';
  switchTab('chat');appendMessage(text,'user');currentMessages.push({user:text,nex:''});
  const norm=text.toLowerCase();
- const browserCommand=parseNexBrowserCommand(text);
+ const browserCommand=window.nexParseBrowserCommand?.(text) || null;
  if(browserCommand){
   let answer='';
   try{
    if(!window.nexBrowserAgent)throw new Error('Cliente da extensão ainda não carregou. Recarregue a página do NEX.');
-   const result=await window.nexBrowserAgent.run(browserCommand);
-   if(browserCommand.type==='READ_PAGE'){
-    answer='Página: '+(result.title||'Sem título')+'\nURL: '+(result.url||'')+'\n\n'+(result.text||'Nenhum texto visível encontrado.');
-   }else if(result.message){answer=result.message;}
-   else{answer='Ação concluída.';}
+   if(browserCommand.type==='STATUS'){
+    const status=await window.nexBrowserAgent.status();
+    if(!status.paired){
+     answer='Encontrei a solicitação de conexão, mas a extensão ainda não está pareada. Abra o popup da extensão na aba que deseja controlar, clique em “Autorizar esta aba” e depois em “Gerar código de pareamento”. Cole o código na seção Agente de Navegador do NEX.';
+    }else if(status.paused){
+     answer='A extensão está pareada, mas o agente está pausado. Abra o popup da extensão e clique em “Retomar agente”.';
+    }else if(!status.authorized){
+     answer='A extensão está pareada, mas nenhuma aba está autorizada. Abra o popup na aba que deseja controlar e clique em “Autorizar esta aba”.';
+    }else{
+     answer='NEX conectado à extensão. A aba autorizada é '+status.authorizedOrigin+'. Agora você pode pedir “ler página”, “clicar em …” ou “preencher … com …”.';
+    }
+   }else{
+    const result=await window.nexBrowserAgent.run(browserCommand);
+    if(browserCommand.type==='READ_PAGE'){
+     answer='Página: '+(result.title||'Sem título')+'\nURL: '+(result.url||'')+'\n\n'+(result.text||'Nenhum texto visível encontrado.');
+    }else if(result.message){answer=result.message;}
+    else{answer='Ação concluída.';}
+   }
   }catch(error){answer='Agente de Navegador: '+error.message;}
   appendMessage(answer,'nex','AGENTE DE NAVEGADOR');
   speakReply(answer);
@@ -537,6 +538,8 @@ init();
 </script>
 <script type="module">
 import './src/browser/extension-client.js';
+import {parseNexBrowserCommand} from './src/browser/command-parser.js';
+window.nexParseBrowserCommand = parseNexBrowserCommand;
 import { NexCore } from './src/index.js';
 import {buildProjectPreview} from './src/engines/project-preview.js';
 const core = new NexCore();
