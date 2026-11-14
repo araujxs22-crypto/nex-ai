@@ -16,10 +16,12 @@ export function parseNexBrowserCommand(value) {
     return {type:'STATUS'};
   }
 
+  // Ignore action verbs explicitly negated by phrases such as "sem clicar ou enviar".
+  const requestedText = normalized.replace(/\bsem\b[^.]*\.?/g, ' ');
   const asksToReadPage =
-    /\b(?:ler|leia|leitura)\b/.test(normalized) &&
-    /\b(?:pagina|aba|conteudo|texto)\b/.test(normalized) &&
-    !/\b(?:clicar|preencher|enviar|submeter|navegar|abrir)\b/.test(normalized);
+    /\b(?:ler|leia|leitura)\b/.test(requestedText) &&
+    /\b(?:pagina|aba|conteudo|texto)\b/.test(requestedText) &&
+    !/\b(?:clicar|preencher|enviar|submeter|navegar|abrir)\b/.test(requestedText);
   if (asksToReadPage || /^(?:nex )?(?:ler|leia) (?:a )?pagina$/.test(normalized)) {
     return {type:'READ_PAGE'};
   }
