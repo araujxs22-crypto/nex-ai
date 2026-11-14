@@ -1,33 +1,34 @@
 # NEX — Agente de Navegador (Chrome)
 
-Extensão Manifest V3 para navegar e interagir com páginas HTTPS na aba ativa. Não exige Node.js, servidor local ou Playwright para uso normal.
+Extensão Manifest V3 que conecta o site NEX ao Chrome por uma ponte local de mensagens. Não usa WebSocket, servidor local, Playwright ou API externa.
 
 ## Instalação
 1. Baixe e extraia o ZIP desta branch.
-2. Abra `chrome://extensions`.
-3. Ative **Modo do desenvolvedor**.
-4. Clique em **Carregar sem compactação**.
-5. Selecione a pasta `extension/sala-do-futuro` extraída.
-6. Fixe o NEX na barra do Chrome.
+2. Abra chrome://extensions.
+3. Ative o Modo do desenvolvedor.
+4. Clique em Carregar sem compactação.
+5. Selecione a pasta extension/sala-do-futuro.
+6. Fixe a extensão na barra do Chrome.
 
-## Uso
-1. Abra o NEX pela barra de extensões.
-2. Pesquise no Google ou informe um endereço; domínios sem protocolo recebem HTTPS automaticamente.
-3. Use **Ler página** para extrair o texto visível.
-4. Use **Voltar**, **Avançar** e **Recarregar** para controlar o histórico da aba.
-5. Use **Clicar no elemento encontrado** com o texto visível do link ou botão.
-6. Use **Preencher campo** para digitar em campos de texto ou escolher uma opção de lista suspensa.
-7. Copie o conteúdo lido para a conversa do NEX e confira cada ação na página.
+## Pareamento e autorização
+1. Abra a página HTTPS que deseja controlar.
+2. Abra o popup da extensão nessa aba e clique em Autorizar esta aba.
+3. Gere e copie o código temporário (válido por cinco minutos).
+4. Abra https://nex-ai-preview.vercel.app e entre em Agente de Navegador · Chrome.
+5. Cole o código e clique em Conectar extensão.
+6. No chat do NEX, use: ler página; abrir https://exemplo.com; clicar em Pesquisar; preencher campo Nome com Kaue; voltar; avançar; recarregar.
 
-## Segurança e limites
-- Manifest V3 com apenas `activeTab`, `scripting` e `clipboardWrite`.
-- O acesso é temporário à aba ativa depois que você abre a extensão.
-- Recusa páginas HTTP e endereços com usuário/senha embutidos.
-- Não lê cookies, senhas, histórico ou códigos de verificação.
-- Ignora campos de senha, campos ocultos e botões de envio.
-- Preencher um campo não envia formulários, mensagens, compras ou atividades.
-- O preenchimento altera o valor do campo e dispara eventos de entrada/alteração; não simula teclas físicas.
-- Correspondências ambíguas exigem um texto mais específico.
-- Cada ação é iniciada por você e deve ser conferida na página.
+Ao navegar para outro domínio, a permissão temporária do Chrome pode ser revogada. Abra o popup na página de destino e autorize-a novamente antes de continuar.
 
-Esta versão ainda é um agente assistido por comandos, não um agente autônomo multi-etapas com visão de tela.
+## Segurança
+- O content script de comunicação roda somente em https://nex-ai-preview.vercel.app/.
+- O agente controla somente a aba explicitamente autorizada pelo popup.
+- A ponte valida a origem do site e o formato/tipo dos comandos.
+- Somente URLs HTTPS sem credenciais são aceitas.
+- Não lê cookies, senhas, códigos de autenticação ou dados de cartão.
+- O preenchimento não envia formulários; botões dentro de formulários, botões submit/reset e links javascript:, mailto: ou tel: são bloqueados.
+- Ações precisam ser solicitadas explicitamente no chat. Não há execução autônoma em segundo plano.
+- O Kill-Switch persiste como pausa e bloqueia novos comandos. Uma operação DOM síncrona que já tenha começado não pode ser revertida; esta versão não executa planos longos de múltiplas etapas.
+- O pareamento usa código aleatório de uso único com expiração de cinco minutos. O token não é enviado a um servidor.
+
+Esta é uma primeira versão funcional de comandos assistidos, não um agente autônomo que decide e executa sequências sem novas instruções.
