@@ -92,6 +92,15 @@ try {
   assert.equal(taskCardResult.ok, true, 'deve reconhecer e clicar em cartão de tarefa com cursor clicável');
   assert.equal(taskCard.clickCount, 1);
 
+  const cardContainer = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
+  const cardTitle = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
+  cardContainer.contains = element => element === cardTitle;
+  browserTestElements = [cardContainer,cardTitle];
+  const nestedCardResult = clickElementOnPage('Tarefa 5: Religião e poder na Idade Média');
+  assert.equal(nestedCardResult.ok, true, 'deve escolher o título dentro do cartão sem confundir o contêiner');
+  assert.equal(cardTitle.clickCount, 1);
+  assert.equal(cardContainer.clickCount, 0);
+
   const searchInput = mockBrowserElement({name:'q',placeholder:'Pesquisar'});
   browserTestElements = [searchInput];
   const fillResult = fillFieldOnPage('Pesquisar', 'melhores jogos leves');
