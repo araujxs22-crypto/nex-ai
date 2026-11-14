@@ -170,4 +170,4 @@ No PowerShell do Windows, execute:
 irm https://raw.githubusercontent.com/araujxs22-crypto/nex-ai/feat/nex-browser-agent/tools/update-nex-extension.ps1 | iex
 ```
 
-Selecione a pasta que já está carregada no Chrome. O script baixa o código temporariamente, valida o manifesto NEX 1.5.0, copia os arquivos da extensão para a pasta escolhida e apaga o temporário. Depois, clique em **Atualizar** em `chrome://extensions`. O script não altera o restante do projeto.
+Selecione a pasta que já está carregada no Chrome. O script baixa o código temporariamente, valida o manifesto NEX 1.5.0, copia os arquivos da extensão para a pasta escolhida e instala o agente de programação em `Documentos/NEX-Agent`; o temporário é apagado. Depois, clique em **Atualizar** em `chrome://extensions`. Para iniciar o serviço local, execute `Documentos/NEX-Agent/start-nex-agent.bat`; ele cria o workspace em `Documentos/NEX-Workspace`.
