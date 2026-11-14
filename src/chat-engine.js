@@ -36,9 +36,11 @@ export class NexChatEngine {
     this.labels = labels;
     this.model = model || new TinyMLP({
       inputSize: vectorizer.vocab.length,
-      hiddenSize: 12,
+      hiddenSize: 16,
       outputSize: labels.length,
-      learningRate: 0.5,
+      learningRate: 0.12,
+      weightDecay: 0.0005,
+      gradientClipNorm: 1,
       seed: 7
     });
     this.router = new IntentRouter({model: this.model, vectorizer, labels});
@@ -60,10 +62,12 @@ export class NexChatEngine {
 
   train(options = {}) {
     return this.model.train(this.training, {
-      epochs: options.epochs ?? 500,
+      epochs: options.epochs ?? 300,
       validation: this.validation,
-      batchSize: options.batchSize ?? this.training.length,
-      patience: options.patience ?? 60,
+      batchSize: options.batchSize ?? 12,
+      patience: options.patience ?? 40,
+      weightDecay: options.weightDecay ?? 0.0005,
+      gradientClipNorm: options.gradientClipNorm ?? 1,
       onEpoch: options.onEpoch
     });
   }
@@ -209,11 +213,13 @@ export class NexChatEngine {
 
   exportModel() {
     return JSON.stringify({
-      schemaVersion: '0.2.0',
+      schemaVersion: '0.3.0',
       datasetVersion: this.datasetVersion,
+      vectorizerVersion: 'word-bigram-tfidf-v1',
       model: this.model.toJSON(),
       labels: this.labels,
       vocab: this.vectorizer.vocab,
+      idf: this.vectorizer.idf.slice(),
       router: {
         confidenceThreshold: this.router.confidenceThreshold,
         marginThreshold: this.router.marginThreshold,
@@ -226,14 +232,21 @@ export class NexChatEngine {
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) {
       throw new Error('Modelo inválido: estrutura raiz ausente');
     }
-    if (saved.schemaVersion !== '0.2.0') {
-      throw new Error('Modelo incompatível: schemaVersion diferente de 0.2.0');
+    if (saved.schemaVersion !== '0.3.0') {
+      throw new Error('Modelo incompatível: schemaVersion diferente de 0.3.0');
+    }
+    if (saved.vectorizerVersion !== 'word-bigram-tfidf-v1') {
+      throw new Error('Modelo incompatível: versão do vetorizador diferente');
     }
     if (saved.datasetVersion !== this.datasetVersion) {
       throw new Error('Modelo incompatível: versão do dataset diferente');
     }
     if (!isUniqueStringArray(saved.labels) || !isUniqueStringArray(saved.vocab)) {
       throw new Error('Modelo inválido: labels ou vocabulário inválidos');
+    }
+    if (!Array.isArray(saved.idf) || saved.idf.length !== saved.vocab.length
+      || !saved.idf.every(value => Number.isFinite(value) && value > 0)) {
+      throw new Error('Modelo inválido: dimensões incompatíveis entre vocabulário e pesos IDF');
     }
 
     const expectedLabels = [...new Set(TRAIN_EXAMPLES.map(example => example.label))];
@@ -258,7 +271,7 @@ export class NexChatEngine {
     }
 
     const restoredLabels = saved.labels.slice();
-    const restoredVectorizer = new TextVectorizer(restoredLabels, saved.vocab.slice());
+    const restoredVectorizer = new TextVectorizer(restoredLabels, saved.vocab.slice(), saved.idf.slice());
     const restoredRouter = new IntentRouter({
       model: restoredModel,
       vectorizer: restoredVectorizer,
