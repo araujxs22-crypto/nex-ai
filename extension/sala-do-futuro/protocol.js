@@ -33,6 +33,11 @@ export function validateBrowserCommand(input) {
       if (!target || target.length > 200) return {ok:false,error:'Informe o texto do link ou botão (até 200 caracteres).'};
       return {ok:true,command:{type:'CLICK',target}};
     }
+    case 'HOVER': {
+      const target = typeof input.target === 'string' ? input.target.trim() : '';
+      if (!target || target.length > 200) return {ok:false,error:'Informe o texto do cartão ou elemento (até 200 caracteres).'};
+      return {ok:true,command:{type:'HOVER',target}};
+    }
     case 'FILL_FIELD': {
       const field = typeof input.field === 'string' ? input.field.trim() : '';
       const value = typeof input.value === 'string' ? input.value : '';
