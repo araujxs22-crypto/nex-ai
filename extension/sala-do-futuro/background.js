@@ -1,5 +1,5 @@
 import {isNexAppOrigin,isSafeHttpsUrl,isSafePairingCode,validateBrowserCommand} from './protocol.js';
-import {readPageOnPage,clickElementOnPage,fillFieldOnPage,historyActionOnPage} from './page-actions.js';
+import {readPageOnPage,hoverElementOnPage,clickElementOnPage,fillFieldOnPage,historyActionOnPage} from './page-actions.js';
 
 const STATE_KEY='nexBrowserAgentState';
 const DEFAULT_STATE={authorizedTabId:null,authorizedOrigin:null,pairingCode:null,pairingExpiresAt:0,paired:false,paused:true};
@@ -105,6 +105,7 @@ async function executeBrowserCommand(rawCommand){
   let func,args=[];
   switch(command.type){
     case 'READ_PAGE': func=readPageOnPage; break;
+    case 'HOVER': func=hoverElementOnPage; args=[command.target]; break;
     case 'CLICK': func=clickElementOnPage; args=[command.target]; break;
     case 'FILL_FIELD': func=fillFieldOnPage; args=[command.field,command.value]; break;
     case 'BACK': func=historyActionOnPage; args=['back']; break;
