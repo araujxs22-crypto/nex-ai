@@ -150,7 +150,29 @@ async function sendMsg(){
    }else{
     const result=await window.nexBrowserAgent.run(browserCommand);
     if(browserCommand.type==='READ_PAGE'){
-     answer='Página: '+(result.title||'Sem título')+'\nURL: '+(result.url||'')+'\n\n'+(result.text||'Nenhum texto visível encontrado.');
+      window.nexLastBrowserPage={
+       title:String(result.title||''),
+       url:String(result.url||''),
+       text:String(result.text||''),
+       controls:Array.isArray(result.controls)?result.controls:[],
+       readAt:Date.now()
+      };
+      answer='Página: '+(result.title||'Sem título')+'\\nURL: '+(result.url||'')+'\\n\\n'+(result.text||'Nenhum texto visível encontrado.');
+      const inspectedControls=window.nexLastBrowserPage.controls;
+      if(inspectedControls.length){
+       answer+='\\n\\nCONTROLES DETECTADOS ('+inspectedControls.length+'):\\n'+inspectedControls.slice(0,18).map(item=>
+        '- '+(item.label||'(sem rótulo)')+' ['+item.type+']'+(item.checked===true?' — selecionado':'')
+       ).join('\\n');
+      }
+      // Feed the read page into the school-task parser so follow-up questions
+      // retain the current activity as context.
+      if(window.nexCore&&window.nexReady&&/quest[aã]o\\s+0?\\d+\\s+de\\s+0?\\d+/i.test(window.nexLastBrowserPage.text)){
+       await window.nexReady;
+       const pageAnalysis=window.nexCore.ask(window.nexLastBrowserPage.text);
+       if(pageAnalysis?.type==='school-task'){
+        answer+='\\n\\nCONTEXTO DA ATIVIDADE:\\n'+pageAnalysis.text;
+       }
+      }
     }else if(browserCommand.type==='HOVER'){
      answer=(result.message||'Elemento localizado.')+'\nElemento: '+(result.target||browserCommand.target);
      if(result.visibleControls?.length)answer+='\nControles visíveis: '+result.visibleControls.join(' · ');
