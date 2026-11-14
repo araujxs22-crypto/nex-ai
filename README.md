@@ -130,3 +130,33 @@ demo/index.html              demonstração offline
 ## Aplicação integrada
 
 `index.html` é a entrada do site e preserva a interface existente. Importa `src/index.js`, inicializa o NEX Core 0.6.0, treina e calibra o modelo na primeira abertura e persiste os pesos em `localStorage`. Pedidos de programação usam o Code Engine; pedidos de cena usam o Video Engine. O Core não executa código arbitrário nem grava arquivos diretamente no computador. Para publicar com GitHub Pages, configure a publicação pela raiz da branch que contém `index.html`.
+
+
+## Agentes especializados · Browser Agent 1.5.0
+
+O NEX é direcionado a duas áreas: programação e controle explícito do navegador. O popup 1.5.0 foi reorganizado em painéis de conexão, navegação, interação e conteúdo lido. O chat mostra uma faixa compacta de atividade durante pesquisa, leitura de página, chamadas ao LLM e operações de código.
+
+### Agente de programação local
+
+O serviço opcional `local-agent/server.mjs` permite listar, ler, criar e editar arquivos e executar verificações no Windows. Para iniciar:
+
+1. Tenha Node.js instalado.
+2. Execute `start-nex-agent.bat`.
+3. Copie o token de uso único exibido no terminal.
+4. Abra a seção Agente de Navegador no NEX, conecte a extensão atualizada e cole o token em Agente de programação local.
+
+O serviço escuta apenas em `127.0.0.1`, exige token Bearer, não oferece terminal arbitrário e restringe caminhos ao workspace `Documentos/NEX-Workspace`. Comandos permitidos: `npm test`, `npm run <script>`, `node <arquivo.js>` e `python <arquivo.py>`. A criação de scaffolds evita sobrescrever arquivos existentes. Arquivos são limitados a 1 MB por arquivo; listagem ignora dependências e diretórios de build.
+
+### Comandos suportados pelo agente
+
+- `listar arquivos`
+- `listar arquivos em src`
+- `ler arquivo src/app.js`
+- `criar arquivo notas.txt com conteúdo: ...`
+- `editar arquivo src/app.js com conteúdo: ...`
+- `executar npm test`
+- `ler página; clicar em Pesquisar`
+
+Planos de navegador aceitam até oito ações explícitas separadas por ponto e vírgula, quebra de linha ou “e depois”. Cada etapa é executada em sequência e o NEX interrompe o plano se uma ação falhar. Isso ainda não equivale a planejamento livre para qualquer linguagem natural: o parser aceita comandos conhecidos e não envia formulários automaticamente.
+
+**Limites técnicos:** o agente local é uma ferramenta de programação com escopo restrito, não um LLM mais inteligente. O SmolLM2 135M continua limitado; o roteamento e as operações especializadas não dependem dele para executar comandos estruturados. A execução de scripts dentro do workspace pode alterar dados do projeto, portanto execute apenas projetos em que confia.
