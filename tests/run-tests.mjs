@@ -949,5 +949,7 @@ const extensionUpdater=readFileSync(new URL('../tools/update-nex-extension.ps1',
 assert.ok(extensionUpdater.includes('FolderBrowserDialog'),'o atualizador deve solicitar a pasta local da extensao');
 assert.ok(extensionUpdater.includes("version -ne '1.5.0'"),'o atualizador deve validar a versao esperada');
 assert.ok(extensionUpdater.includes('chrome://extensions'),'o atualizador deve orientar a recarregar a extensao');
+assert.ok(extensionUpdater.includes("'NEX-Agent'"),'o atualizador deve instalar o agente de programacao local');
+assert.ok(extensionUpdater.includes("'start-nex-agent.bat'"),'o atualizador deve instalar o launcher do agente local');
 assert.ok(integratedSite.includes('tools/update-nex-extension.ps1'),'a tela de instalacao deve explicar a atualizacao sem ZIP manual');
 assert.ok(integratedSite.includes('CODE AGENT · BROWSER AGENT'),'o produto deve destacar os dois agentes principais');
