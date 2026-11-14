@@ -2,54 +2,29 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEX — Agente de Navegador</title>
+<title>NEX Browser Agent</title>
 <style>
-.agent-box{border:1px solid #46506a;border-radius:9px;padding:10px;margin:10px 0;background:#1b2030}.agent-box button{width:100%;margin:5px 0}.agent-box .code-row{display:flex;gap:6px}.agent-box .code-row input{min-width:0}.agent-box .code-row button{width:74px;flex-shrink:0}.agent-note{font-size:11px;color:#aeb7cc;margin:5px 0}
-:root{color-scheme:dark;font:13px/1.45 "Segoe UI",Arial,sans-serif;background:#151823;color:#edf0fa}
-*{box-sizing:border-box}body{width:360px;margin:0;padding:15px}
-h1{font-size:17px;margin:0 0 4px}.sub,.hint{color:#aeb7cc;font-size:11px}
-label{display:block;margin:10px 0 4px;color:#cbd4e8;font-weight:600}
-input,textarea{width:100%;background:#0e111a;color:#edf0fa;border:1px solid #3a4257;border-radius:7px;padding:9px;font:12px "Segoe UI",Arial,sans-serif}
-textarea{height:145px;resize:vertical;font-family:Consolas,monospace}
-button{border:0;border-radius:8px;padding:9px 10px;font-weight:600;cursor:pointer;background:#30384a;color:#edf0fa}
-button.primary{background:#887cf2;color:#111522}button:disabled{opacity:.4;cursor:not-allowed}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.nav-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px}
-#status{min-height:34px;padding:8px;border:1px solid #3a4257;border-radius:8px;color:#b8c5df;font-size:11px;margin:10px 0}
-small{color:#8290aa}.warning{color:#e6c98a}
-</style></head>
+:root{color-scheme:dark;--bg:#0d111b;--panel:#151c2b;--line:#2b3850;--text:#eef3ff;--muted:#94a2bb;--accent:#9385ff;--good:#54d6a4;--danger:#e56c80}
+*{box-sizing:border-box}html,body{margin:0;width:390px;min-width:350px;background:var(--bg);color:var(--text);font:13px/1.45 "Segoe UI",Arial,sans-serif}body{padding:14px;max-height:640px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#394862 transparent}button,input,textarea{font:inherit}button{min-height:36px;border:1px solid var(--line);border-radius:10px;padding:8px 11px;background:#202b40;color:var(--text);font-weight:650;cursor:pointer;transition:background .15s,border-color .15s}button:hover:not(:disabled){background:#2a3852;border-color:#566b8f}button:disabled{opacity:.42;cursor:not-allowed}button.primary{border-color:transparent;background:linear-gradient(110deg,#8878f3,#5c8fe7);color:#0b1020}button.danger{background:#482b3c;border-color:#754051;color:#ffdce3}input,textarea{width:100%;min-width:0;border:1px solid #34435d;border-radius:10px;background:#0d1421;color:var(--text);padding:10px 11px;outline:none}input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px #9385ff20}input::placeholder,textarea::placeholder{color:#71809a}.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}.brand{display:flex;align-items:center;gap:10px}.brand-mark{width:36px;height:36px;display:grid;place-items:center;border:1px solid #514b83;border-radius:12px;background:linear-gradient(145deg,#302e51,#1a2a44);font-size:15px;font-weight:900;color:#c6bdff;letter-spacing:1px}.brand-title{font-size:15px;font-weight:800;letter-spacing:1.4px}.brand-sub{font-size:10px;color:var(--muted);margin-top:1px}.version{font-size:10px;color:#aab7ce;border:1px solid var(--line);background:#141d2c;border-radius:20px;padding:5px 8px}.intro{margin:0 0 13px;color:var(--muted);font-size:11px;line-height:1.5}.card{border:1px solid var(--line);background:linear-gradient(155deg,#192337,#121a29);border-radius:14px;padding:12px;margin-bottom:11px;box-shadow:0 8px 24px #0002}.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.card-title{font-size:12px;font-weight:750}.eyebrow{font-size:9px;color:#8493ae;letter-spacing:1.2px;text-transform:uppercase}.status-line{display:flex;align-items:flex-start;gap:8px;color:#c6d1e5;font-size:11px;margin:0 0 10px;line-height:1.45}.status-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#e0b76d;margin-top:4px;box-shadow:0 0 0 3px #e0b76d18}.status-dot.ready{background:var(--good);box-shadow:0 0 0 3px #54d6a418}.stack{display:grid;gap:7px}.pair-row{display:flex;gap:7px;margin-top:8px}.pair-row input{flex:1}.pair-row button{flex:0 0 72px}.two{display:grid;grid-template-columns:1fr 1fr;gap:7px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.divider{height:1px;background:#29364b;margin:10px 0}label{display:block;font-size:10px;font-weight:700;color:#b8c6dc;margin:10px 0 5px}.hint{font-size:10px;color:var(--muted);line-height:1.5;margin:8px 0 0}.warn{color:#e5c88e}details.group{border:1px solid var(--line);border-radius:13px;background:#131c2a;margin-bottom:9px;overflow:hidden}details.group>summary{list-style:none;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;font-size:12px;font-weight:750}details.group>summary::-webkit-details-marker{display:none}details.group>summary:after{content:"＋";color:#9daac0;font-size:15px}details.group[open]>summary:after{content:"−"}.group-body{padding:0 11px 11px}.group-desc{color:var(--muted);font-size:10px;margin:0 0 8px}.code-row{display:flex;gap:7px;margin-top:8px}.code-row input{flex:1}.code-row button{flex:0 0 72px}#status{min-height:35px;border:1px solid #2f4059;border-radius:10px;background:#111a29;color:#b8c7dc;font-size:11px;padding:9px 10px;margin:11px 0;line-height:1.4}textarea{height:116px;resize:vertical;font:11px/1.5 Consolas,monospace}.footer{color:#75849e;font-size:10px;line-height:1.5;padding:4px 2px 1px}.footer strong{color:#aebbd0;font-weight:650}[hidden]{display:none!important}
+</style>
+</head>
 <body>
-<h1>NEX — Agente de Navegador</h1>
-<p class="sub">A extensão atua na aba HTTPS que você autorizar. O NEX envia comandos somente depois do pareamento.</p>
-<div class="agent-box">
-  <strong>Conexão com o NEX</strong>
-  <p id="agentStatus" class="agent-note" role="status">Verificando estado…</p>
-  <button id="authorizeAgentTab" class="primary">Autorizar esta aba</button>
-  <button id="createPairingCode" disabled>Gerar código de pareamento</button>
-  <div id="pairCodeRow" class="code-row" hidden><input id="pairingCode" readonly aria-label="Código de pareamento"><button id="copyPairingCode">Copiar</button></div>
-  <button id="pauseAgent" style="background:#8f3c4a">Parar agente (Kill-Switch)</button>
-  <button id="resumeAgent">Retomar agente</button>
-  <button id="disconnectAgent">Desconectar e revogar autorização</button>
-  <p class="agent-note">A autorização é por site. Ao navegar para outro domínio, autorize novamente pela extensão.</p>
-</div>
-<label for="googleQuery">Pesquisar no Google</label>
-<input id="googleQuery" type="search" placeholder="Digite o que deseja pesquisar">
-<button id="googleSearch" class="primary" style="width:100%;margin-top:7px">Pesquisar no Google</button>
-<label for="url">Abrir endereço HTTPS</label>
-<input id="url" type="url" placeholder="https://www.google.com">
-<div class="actions"><button id="navigate" class="primary">Abrir endereço</button><button id="read">Ler página</button></div>
-<div class="nav-actions"><button id="back">← Voltar</button><button id="forward">Avançar →</button><button id="reload">↻ Recarregar</button></div>
-<label for="target">Texto do botão ou link para clicar</label>
-<input id="target" placeholder="Ex.: Pesquisar">
-<button id="click" class="primary" style="width:100%;margin-top:7px">Clicar no elemento encontrado</button>
-<label for="field">Campo para preencher (texto ou lista suspensa)</label>
-<input id="field" placeholder="Ex.: Pesquisar">
-<label for="value">Texto para digitar</label>
-<input id="value" placeholder="Texto ou opção desejada">
-<button id="type" style="width:100%;margin-top:7px">Preencher campo (não envia)</button>
+<header class="topbar"><div class="brand"><div class="brand-mark">NX</div><div><div class="brand-title">NEX AGENT</div><div class="brand-sub">Controle de navegador</div></div></div><span class="version">EXTENSÃO 1.5.0</span></header>
+<p class="intro">O NEX atua somente na aba HTTPS que você autorizar. As ações são executadas após o pareamento e podem ser interrompidas a qualquer momento.</p>
+<section class="card">
+<div class="card-head"><span class="card-title">Conexão com o NEX</span><span class="eyebrow">SEGURANÇA</span></div>
+<p id="agentStatus" class="status-line" role="status"><span class="status-dot"></span><span>Verificando estado da conexão…</span></p>
+<div class="stack"><button id="authorizeAgentTab" class="primary">Autorizar esta aba</button><button id="createPairingCode" disabled>Gerar código de pareamento</button></div>
+<div id="pairCodeRow" class="pair-row" hidden><input id="pairingCode" readonly aria-label="Código de pareamento"><button id="copyPairingCode">Copiar</button></div>
+<div class="divider"></div><div class="two"><button id="pauseAgent" class="danger">Parar agente</button><button id="resumeAgent">Retomar agente</button></div>
+<button id="disconnectAgent" style="width:100%;margin-top:7px">Desconectar e revogar acesso</button>
+<p class="hint">A autorização é por site. Ao mudar de domínio, autorize novamente a nova aba.</p>
+</section>
+<details class="group" open><summary>Pesquisar na web</summary><div class="group-body"><p class="group-desc">Abra uma busca do Google na aba atual.</p><input id="googleQuery" type="search" placeholder="O que deseja pesquisar?"><button id="googleSearch" class="primary" style="width:100%;margin-top:8px">Pesquisar no Google</button></div></details>
+<details class="group" open><summary>Navegação</summary><div class="group-body"><label for="url">Endereço HTTPS</label><input id="url" type="url" placeholder="https://exemplo.com"><div class="two" style="margin-top:8px"><button id="navigate" class="primary">Abrir endereço</button><button id="read">Ler página</button></div><div class="three" style="margin-top:7px"><button id="back">← Voltar</button><button id="forward">Avançar →</button><button id="reload">↻ Recarregar</button></div></div></details>
+<details class="group"><summary>Interagir com a página</summary><div class="group-body"><label for="target">Texto do botão ou link</label><input id="target" placeholder="Ex.: Pesquisar"><button id="click" class="primary" style="width:100%;margin-top:7px">Clicar no elemento</button><div class="divider"></div><label for="field">Campo para preencher</label><input id="field" placeholder="Ex.: Nome ou Pesquisar"><label for="value">Texto ou opção desejada</label><input id="value" placeholder="Digite o conteúdo"><button id="type" style="width:100%;margin-top:7px">Preencher campo (não envia)</button></div></details>
+<details class="group"><summary>Conteúdo lido</summary><div class="group-body"><textarea id="preview" readonly placeholder="O texto da página aparecerá aqui."></textarea><div class="two" style="margin-top:7px"><button id="copy" disabled>Copiar texto</button><button id="clear">Limpar</button></div></div></details>
 <div id="status" role="status" aria-live="polite">Aguardando sua ação.</div>
-<label for="preview">Conteúdo lido da página</label>
-<textarea id="preview" readonly placeholder="O texto da página aparecerá aqui."></textarea>
-<div class="actions"><button id="copy" disabled>Copiar texto</button><button id="clear">Limpar</button></div>
-<p class="hint warning">Não lê cookies ou senhas. Não envia formulários, mensagens ou compras. Confira a página antes de cada ação.</p>
+<footer class="footer"><strong>Proteções ativas:</strong> não lê cookies ou senhas, não envia formulários, mensagens ou compras. Confira a página antes de cada ação. Use “Parar agente” para bloquear novos comandos.</footer>
 <script type="module" src="popup.js"></script>
 </body></html>
