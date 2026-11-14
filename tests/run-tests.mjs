@@ -943,3 +943,11 @@ assert.ok(localAgentSource.includes('Use caminhos relativos dentro da pasta de t
 assert.ok(integratedSite.includes('id="nex-activity"'),'a interface deve ter o indicador compacto de atividade');
 assert.ok(integratedSite.includes('Navegador · etapa'),'planos devem exibir a etapa ativa');
 assert.ok(integratedSite.includes('nex-local-agent-connect'),'o site deve expor conexão ao agente local');
+
+
+const extensionUpdater=readFileSync(new URL('../tools/update-nex-extension.ps1',import.meta.url),'utf8');
+assert.ok(extensionUpdater.includes('GetFolderPath'),'o atualizador deve solicitar a pasta local da extensao');
+assert.ok(extensionUpdater.includes("version -ne '1.5.0'"),'o atualizador deve validar a versao esperada');
+assert.ok(extensionUpdater.includes('chrome://extensions'),'o atualizador deve orientar a recarregar a extensao');
+assert.ok(integratedSite.includes('tools/update-nex-extension.ps1'),'a tela de instalacao deve explicar a atualizacao sem ZIP manual');
+assert.ok(integratedSite.includes('CODE AGENT · BROWSER AGENT'),'o produto deve destacar os dois agentes principais');
