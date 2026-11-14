@@ -12,7 +12,7 @@ import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
 import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';
 import {NEX_APP_ORIGIN, isNexAppOrigin, isSafeHttpsUrl, isSafePairingCode, validateBrowserCommand} from '../extension/sala-do-futuro/protocol.js';
-import {clickElementOnPage, fillFieldOnPage} from '../extension/sala-do-futuro/page-actions.js';
+import {clickElementOnPage, fillFieldOnPage, hoverElementOnPage} from '../extension/sala-do-futuro/page-actions.js';
 import {parseNexBrowserCommand} from '../src/browser/command-parser.js';
 
 
@@ -34,6 +34,8 @@ assert.equal(isSafeHttpsUrl('https://user:pass@example.com/'),false);
 assert.equal(isSafePairingCode('0123456789abcdef0123456789abcdef'),true);
 assert.equal(isSafePairingCode('short-code'),false);
 assert.deepEqual(validateBrowserCommand({type:'READ_PAGE'}),{ok:true,command:{type:'READ_PAGE'}});
+assert.deepEqual(validateBrowserCommand({type:'HOVER',target:'Tarefa 5'}),{ok:true,command:{type:'HOVER',target:'Tarefa 5'}});
+assert.equal(validateBrowserCommand({type:'HOVER',target:''}).ok,false);
 assert.equal(validateBrowserCommand({type:'NAVIGATE',url:'http://example.com'}).ok,false);
 assert.equal(validateBrowserCommand({type:'NAVIGATE',url:'https://user:pass@example.com'}).ok,false);
 assert.equal(validateBrowserCommand({type:'FILL_FIELD',field:'senha',value:'x'}).ok,false);
@@ -49,6 +51,8 @@ assert.deepEqual(
 assert.deepEqual(parseNexBrowserCommand('NEX abrir https://example.com'), {type:'NAVIGATE',url:'https://example.com'});
 assert.deepEqual(parseNexBrowserCommand('clique em prosseguir para tarefa'), {type:'CLICK',target:'prosseguir para tarefa'});
 assert.deepEqual(parseNexBrowserCommand('clique no cartão da Tarefa 5'), {type:'CLICK',target:'cartão da Tarefa 5'});
+assert.deepEqual(parseNexBrowserCommand('passe o mouse sobre Tarefa 5'), {type:'HOVER',target:'Tarefa 5'});
+assert.deepEqual(parseNexBrowserCommand('passar mouse em Religião e poder na Idade Média'), {type:'HOVER',target:'Religião e poder na Idade Média'});
 assert.equal(parseNexBrowserCommand('leia a página e clique em Enviar'), null,
   'uma solicitação que mistura leitura com ações deve exigir um comando explícito separado');
 
@@ -74,7 +78,8 @@ function mockBrowserElement({
       if (attribute === 'aria-disabled') return null;
       return null;
     },
-    getBoundingClientRect() { return {width:120,height:24}; },
+    getBoundingClientRect() { return {width:120,height:24,left:30,top:40,right:150,bottom:64}; },
+    scrollIntoView(options) { this.scrolledWith=options; },
     focus() { this.focused = true; },
     dispatchEvent(event) { events.push(event.type); return true; },
     click() { this.clickCount += 1; }
@@ -86,6 +91,15 @@ let browserTestElements = [];
 globalThis.document = {querySelectorAll: () => browserTestElements};
 globalThis.getComputedStyle = element => ({cursor: element.cursor || 'default'});
 try {
+  const hoverCard = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
+  browserTestElements = [hoverCard];
+  const hoverResult = await hoverElementOnPage('Tarefa 5: Religião e poder na Idade Média');
+  assert.equal(hoverResult.ok, true, 'deve localizar cartão para hover');
+  assert.deepEqual(hoverCard.scrolledWith,{behavior:'auto',block:'center',inline:'nearest'});
+  assert.ok(hoverCard.events.includes('pointerover') && hoverCard.events.includes('mouseover'),
+    'deve enviar eventos pointer e mouse para handlers da página');
+  assert.match(hoverResult.note,/CSS :hover/);
+
   const taskCard = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
   browserTestElements = [taskCard];
   const taskCardResult = clickElementOnPage('Tarefa 5: Religião e poder na Idade Média');
