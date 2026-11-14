@@ -108,6 +108,15 @@ try {
   assert.equal(clickResult.ok, true, 'deve clicar em um link visível com correspondência exata');
   assert.equal(safeLink.clickCount, 1);
   assert.equal(submitButton.clickCount, 0, 'nunca deve acionar botões de envio');
+  const purchaseButton = mockBrowserElement({tagName:'BUTTON',type:'button',text:'Comprar agora'});
+  browserTestElements = [purchaseButton];
+  assert.equal(clickElementOnPage('Comprar agora').ok, false, 'deve bloquear ações de compra');
+  assert.equal(purchaseButton.clickCount, 0, 'não deve acionar o botão de compra');
+
+  const namedPassword = mockBrowserElement({type:'text',name:'user_password',placeholder:'Senha'});
+  browserTestElements = [namedPassword];
+  assert.equal(fillFieldOnPage('Senha', 'abc123').ok, false, 'deve bloquear campos sensíveis mesmo quando não são input[type=password]');
+
 
   browserTestElements = [safeLink, mockBrowserElement({tagName:'A',text:'Abrir documentação avançada',href:'/advanced'})];
   assert.equal(clickElementOnPage('Abrir').ok, false, 'deve pedir texto específico quando a busca parcial é ambígua');
@@ -118,7 +127,10 @@ try {
 
 const salaExtensionManifest = JSON.parse(readFileSync(new URL('../extension/sala-do-futuro/manifest.json', import.meta.url), 'utf8'));
 assert.equal(salaExtensionManifest.manifest_version, 3);
-assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', 'clipboardWrite']);
+assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', 'storage', 'clipboardWrite']);
+assert.equal(salaExtensionManifest.background.service_worker, 'background.js');
+assert.equal(salaExtensionManifest.background.type, 'module');
+assert.equal(salaExtensionManifest.content_scripts[0].matches[0], 'https://nex-ai-preview.vercel.app/*');
 assert.equal(salaExtensionManifest.host_permissions, undefined);
 
 const codeEngine = new NexCodeEngine();
