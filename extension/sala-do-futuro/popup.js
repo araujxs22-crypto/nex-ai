@@ -124,7 +124,14 @@ async function popupAgentMessage(action,extra={}){
   if(!response||!response.ok)throw new Error(response&&response.error||'Falha ao comunicar com o agente.');
   return response.data;
 }
-function showAgentStatus(message){if(agentStatus)agentStatus.textContent=message;}
+function showAgentStatus(message){
+  if(!agentStatus)return;
+  const label=agentStatus.querySelector('span:last-child');
+  if(label)label.textContent=message;
+  else agentStatus.textContent=message;
+  const dot=agentStatus.querySelector('.status-dot');
+  if(dot)dot.classList.toggle('ready',/pareada\. ativa|pareamento conclu[ií]do|agente retomado|conectada e pronta/i.test(message));
+}
 async function loadAgentStatus(){
   try{
     const status=await popupAgentMessage('GET_STATUS');
