@@ -5,6 +5,16 @@ const NORMALIZE = value => String(value || '')
   .replace(/\s+/g, ' ')
   .trim();
 
+function extractTarget(value) {
+  const text = String(value || '').trim();
+  const quoted = text.match(/["'“”‘’]([^"'“”‘’]{1,200})["'“”‘’]/);
+  if (quoted) return quoted[1].trim();
+  return text
+    .split(/\b(?:procure|busque|role|desca|suba|se necessario|nao clique|não clique|depois informe|informe quais|e informe|em seguida)\b/i)[0]
+    .replace(/[.,;:]+$/,'')
+    .trim();
+}
+
 export function parseNexBrowserCommand(value) {
   const text = String(value || '').trim();
   const normalized = NORMALIZE(text);
@@ -16,12 +26,13 @@ export function parseNexBrowserCommand(value) {
     return {type:'STATUS'};
   }
 
-  // Ignore action verbs explicitly negated by phrases such as "sem clicar ou enviar".
+  // A compound instruction must not be mistaken for a single browser action.
+  // The caller can then send it to the task planner instead.
   const requestedText = normalized.replace(/\bsem\b[^.]*\.?/g, ' ');
   const asksToReadPage =
     /\b(?:ler|leia|leitura)\b/.test(requestedText) &&
     /\b(?:pagina|aba|conteudo|texto)\b/.test(requestedText) &&
-    !/\b(?:clicar|preencher|enviar|submeter|navegar|abrir)\b/.test(requestedText);
+    !/\b(?:clicar|preencher|enviar|submeter|navegar|abrir|marcar|selecionar)\b/.test(requestedText);
   if (asksToReadPage || /^(?:nex )?(?:ler|leia) (?:a )?pagina$/.test(normalized)) {
     return {type:'READ_PAGE'};
   }
@@ -29,14 +40,22 @@ export function parseNexBrowserCommand(value) {
   if ((match = /^(?:nex )?(?:abrir|navegar(?: para)?) (https:\/\/\S+)$/i.exec(text))) {
     return {type:'NAVIGATE',url:match[1]};
   }
-  if ((match = /^(?:nex )?(?:passar|passe|posicionar|colocar) (?:o )?mouse (?:em|sobre|no|na) (.+)$/i.exec(text)) ||
-      (match = /^(?:nex )?hover (?:em|sobre) (.+)$/i.exec(text))) {
-    return {type:'HOVER',target:match[1].replace(/^["']|["']$/g,'').trim()};
+
+  if ((match = /^(?:nex )?(?:marcar|marque|selecionar|selecione|assinalar|assinale|escolher|escolha)\s+(?:a\s+op[cç][aã]o\s+)?(.+?)\s+(?:na|em|da)\s+quest[aã]o\s*0?(\d+)$/i.exec(text))) {
+    const option = extractTarget(match[1]);
+    return option ? {type:'SELECT_OPTION',option,question:'questão '+Number(match[2])} : null;
   }
-  if ((match = /^(?:nex )?(?:clicar|clique) (?:em|no|na) (.+)$/i.exec(text))) {
-    return {type:'CLICK',target:match[1].replace(/^["']|["']$/g,'').trim()};
+
+  if ((match = /^(?:nex )?(?:passar|passe|posicionar|colocar) (?:o )?mouse (?:em|sobre|no|na) ([\s\S]+)$/i.exec(text)) ||
+      (match = /^(?:nex )?hover (?:em|sobre) ([\s\S]+)$/i.exec(text))) {
+    const target = extractTarget(match[1]);
+    return target ? {type:'HOVER',target} : null;
   }
-  if ((match = /^(?:nex )?preencher (.*?) com ([\s\S]+)$/i.exec(text))) {
+  if ((match = /^(?:nex )?(?:clicar|clique) (?:em|no|na) ([\s\S]+)$/i.exec(text))) {
+    const target = extractTarget(match[1]);
+    return target ? {type:'CLICK',target} : null;
+  }
+  if ((match = /^(?:nex )?(?:preencher|preencha) (?:o )?campo (.*?) com ([\s\S]+)$/i.exec(text))) {
     return {type:'FILL_FIELD',field:match[1].trim(),value:match[2]};
   }
   if (/^(?:nex )?voltar$/.test(normalized)) return {type:'BACK'};
