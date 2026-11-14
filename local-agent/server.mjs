@@ -36,9 +36,20 @@ async function checkedExisting(input) {
 }
 async function checkedParent(input) {
   const candidate = resolveRelative(input);
-  await fs.mkdir(path.dirname(candidate), {recursive:true});
-  const parent = await fs.realpath(path.dirname(candidate));
-  if (!insideRoot(parent)) throw new Error('A pasta de destino aponta para fora do workspace.');
+  const parentRelative=path.relative(ROOT,path.dirname(candidate));
+  let parent=ROOT;
+  for(const segment of parentRelative.split(path.sep).filter(Boolean)) {
+    const next=path.join(parent,segment);
+    try {
+      const info=await fs.lstat(next);
+      if(info.isSymbolicLink()||!info.isDirectory()) throw new Error('A pasta de destino contém um link ou não é uma pasta.');
+    } catch(error) {
+      if(error.code!=='ENOENT') throw error;
+      await fs.mkdir(next);
+    }
+    parent=await fs.realpath(next);
+    if(!insideRoot(parent)) throw new Error('A pasta de destino aponta para fora do workspace.');
+  }
   return {absolute:path.join(parent,path.basename(candidate)),parent};
 }
 function safeToken(candidate) {
