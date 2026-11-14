@@ -2,6 +2,8 @@ import {isNexAppOrigin,isSafeHttpsUrl,isSafePairingCode,validateBrowserCommand} 
 import {readPageOnPage,hoverElementOnPage,clickElementOnPage,selectOptionOnPage,fillFieldOnPage,historyActionOnPage} from './page-actions.js';
 
 const STATE_KEY='nexBrowserAgentState';
+const LOCAL_TOKEN_KEY='nexLocalCodeAgentToken';
+const LOCAL_AGENT_URL='http://127.0.0.1:4177';
 const DEFAULT_STATE={authorizedTabId:null,authorizedOrigin:null,pairingCode:null,pairingExpiresAt:0,paired:false,paused:true};
 let commandQueue=Promise.resolve();
 
@@ -156,8 +158,52 @@ async function handlePopupMessage(message){
   }
 }
 
+async function localAgentFetch(route, method='GET', payload=null, token=null) {
+  const stored = token ? {token} : await chrome.storage.local.get(LOCAL_TOKEN_KEY);
+  const auth = stored.token;
+  if (!auth) throw new Error('Agente de programação local não conectado. Inicie start-nex-agent.bat e conecte o token no NEX.');
+  const response = await fetch(LOCAL_AGENT_URL + route, {
+    method,
+    headers: {'Authorization':'Bearer '+auth, ...(payload ? {'Content-Type':'application/json'} : {})},
+    ...(payload ? {body:JSON.stringify(payload)} : {})
+  });
+  let data={};
+  try { data=await response.json(); } catch {}
+  if (!response.ok) throw new Error(data.error || ('Agente local respondeu HTTP '+response.status+'.'));
+  return data;
+}
+
+async function handleLocalBridgeMessage(message) {
+  const payload=message.payload||{};
+  if (message.type==='LOCAL_SETUP') {
+    if (typeof payload.token!=='string' || !/^[A-Za-z0-9_-]{40,80}$/.test(payload.token)) throw new Error('Token inválido. Copie o token completo exibido no terminal do agente local.');
+    const status=await localAgentFetch('/api/status','GET',null,payload.token);
+    await chrome.storage.local.set({[LOCAL_TOKEN_KEY]:payload.token});
+    return {ok:true,data:status};
+  }
+  if (message.type==='LOCAL_STATUS') {
+    return {ok:true,data:await localAgentFetch('/api/status')};
+  }
+  if (message.type==='LOCAL_COMMAND') {
+    const routes={
+      list:['/api/files/list','POST'],
+      read:['/api/files/read','POST'],
+      create:['/api/files/create','POST'],
+      write:['/api/files/write','POST'],
+      scaffold:['/api/projects/scaffold','POST'],
+      run:['/api/commands/run','POST']
+    };
+    const route=routes[payload.action];
+    if (!route) throw new Error('Operação de programação não permitida.');
+    const {action,...args}=payload;
+    return {ok:true,data:await localAgentFetch(route[0],route[1],args)};
+  }
+  throw new Error('Ação do agente local não reconhecida.');
+}
+
 async function handleBridgeMessage(message){
   if(typeof message.requestId!=='string'||message.requestId.length>100)throw new Error('Identificador de solicitação inválido.');
+  if (['LOCAL_SETUP','LOCAL_STATUS','LOCAL_COMMAND'].includes(message.type)) return handleLocalBridgeMessage(message);
   switch(message.type){
     case 'STATUS': return {ok:true,data:statusFrom(await getState())};
     case 'PAIR': {
