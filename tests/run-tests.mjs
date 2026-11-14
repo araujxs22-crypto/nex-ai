@@ -946,7 +946,7 @@ assert.ok(integratedSite.includes('nex-local-agent-connect'),'o site deve expor 
 
 
 const extensionUpdater=readFileSync(new URL('../tools/update-nex-extension.ps1',import.meta.url),'utf8');
-assert.ok(extensionUpdater.includes('GetFolderPath'),'o atualizador deve solicitar a pasta local da extensao');
+assert.ok(extensionUpdater.includes('FolderBrowserDialog'),'o atualizador deve solicitar a pasta local da extensao');
 assert.ok(extensionUpdater.includes("version -ne '1.5.0'"),'o atualizador deve validar a versao esperada');
 assert.ok(extensionUpdater.includes('chrome://extensions'),'o atualizador deve orientar a recarregar a extensao');
 assert.ok(integratedSite.includes('tools/update-nex-extension.ps1'),'a tela de instalacao deve explicar a atualizacao sem ZIP manual');
