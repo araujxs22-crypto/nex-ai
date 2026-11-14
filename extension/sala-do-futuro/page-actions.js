@@ -20,9 +20,15 @@ export function clickElementOnPage(needle) {
     if (type === 'submit' || type === 'reset' || type === 'image') return false;
     if (tag === 'button' && type !== 'button') return false;
     if (tag === 'input' && type !== 'button') return false;
+    if (tag !== 'a' && element.closest?.('form')) return false;
     if (tag === 'a') {
       const href = String(element.getAttribute?.('href') || '');
-      if (!href || /^\s*javascript:/i.test(href)) return false;
+      if (!href || /^\s*(javascript:|mailto:|tel:|data:)/i.test(href)) return false;
+      if (element.hasAttribute?.('download') || String(element.target || '').toLowerCase() === '_blank') return false;
+      try {
+        const destination = new URL(href,'https://nex.invalid/');
+        if (destination.protocol !== 'https:' || destination.username || destination.password) return false;
+      } catch { return false; }
     }
     const rect = element.getBoundingClientRect?.();
     return Boolean(rect && rect.width > 0 && rect.height > 0);
@@ -64,6 +70,8 @@ export function fillFieldOnPage(needle, text) {
     const autocomplete = normalize(element.getAttribute?.('autocomplete'));
     const sensitiveAutocomplete = ['current-password','new-password','one-time-code','cc-number','cc-csc','cc-exp','cc-exp-month','cc-exp-year'];
     if (sensitiveAutocomplete.includes(autocomplete)) return false;
+    const sensitiveHint = normalize([element.name,element.id,element.placeholder,element.getAttribute?.('aria-label'),autocomplete].join(' ')).replace(/[._-]/g,' ');
+    if (/\b(password|passwd|passcode|senha|token|otp|one time|verification|verificacao|cvv|cvc|credit card|cartao|card number)\b/i.test(sensitiveHint)) return false;
     const rect = element.getBoundingClientRect?.();
     return Boolean(rect && rect.width > 0 && rect.height > 0);
   });
