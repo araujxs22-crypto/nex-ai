@@ -63,3 +63,12 @@ export function parseNexBrowserCommand(value) {
   if (/^(?:nex )?recarregar$/.test(normalized)) return {type:'RELOAD'};
   return null;
 }
+
+
+export function parseNexBrowserPlan(value) {
+  const raw=String(value||'').trim();
+  const parts=raw.split(/\s*;\s*|\n+|\s+e depois\s+/i).map(part=>part.trim()).filter(Boolean);
+  if(parts.length<2||parts.length>8)return null;
+  const steps=parts.map(parseNexBrowserCommand);
+  return steps.every(Boolean)?steps:null;
+}
