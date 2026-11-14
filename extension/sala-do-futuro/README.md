@@ -16,7 +16,9 @@ Extensão Manifest V3 que conecta o site NEX ao Chrome por uma ponte local de me
 3. Gere e copie o código temporário (válido por cinco minutos).
 4. Abra https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app e entre em Agente de Navegador · Chrome.
 5. Cole o código e clique em Conectar extensão.
-6. No chat do NEX, use: ler página; abrir https://exemplo.com; clicar em Pesquisar; preencher campo Nome com Kaue; voltar; avançar; recarregar.
+6. No chat do NEX, use: ler página; passar mouse sobre Tarefa 5; abrir https://exemplo.com; clicar em Pesquisar; preencher campo Nome com Kaue; voltar; avançar; recarregar.
+
+O comando "passar mouse sobre ..." rola o elemento para o centro da tela e envia eventos pointer/mouse para handlers JavaScript. Eventos sintéticos não ativam necessariamente regras CSS :hover que dependam do cursor físico; nessa situação, será necessário adicionar uma etapa de controle de mouse real com permissão extra do Chrome. O comando apenas revela/inspeciona elementos; não clica no botão revelado.
 
 Ao navegar para outro domínio, a permissão temporária do Chrome pode ser revogada. Abra o popup na página de destino e autorize-a novamente antes de continuar.
 
