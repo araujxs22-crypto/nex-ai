@@ -151,6 +151,36 @@ try {
   assert.equal(select.value, 'sports');
   assert.ok(select.events.includes('change'));
 
+  const correctChoice = mockBrowserElement({
+    tagName:'INPUT',type:'radio',name:'question2',
+    labels:[{innerText:'Certo',textContent:'Certo'}]
+  });
+  correctChoice.checked=false;
+  correctChoice.click=function(){this.checked=true;this.clickCount+=1;};
+  browserTestElements=[correctChoice];
+  const choiceResult=selectOptionOnPage('Certo');
+  assert.equal(choiceResult.ok,true,'deve selecionar uma opção radio pelo rótulo');
+  assert.equal(correctChoice.checked,true,'deve confirmar o estado selecionado');
+  assert.equal(correctChoice.clickCount,1);
+
+  const externalLabel={innerText:'Errado',textContent:'Errado',getBoundingClientRect:()=>({width:120,height:24,left:30,top:40,right:150,bottom:64})};
+  const visuallyHiddenChoice=mockBrowserElement({tagName:'INPUT',type:'radio',labels:[externalLabel]});
+  visuallyHiddenChoice.checked=false;
+  visuallyHiddenChoice.getBoundingClientRect=()=>({width:0,height:0,left:0,top:0,right:0,bottom:0});
+  visuallyHiddenChoice.click=function(){this.checked=true;this.clickCount+=1;};
+  browserTestElements=[visuallyHiddenChoice];
+  const hiddenChoiceResult=selectOptionOnPage('Errado');
+  assert.equal(hiddenChoiceResult.ok,true,'deve selecionar input oculto associado a label externa visível');
+  assert.equal(visuallyHiddenChoice.checked,true);
+
+  const duplicateChoiceA = mockBrowserElement({tagName:'INPUT',type:'radio',labels:[{innerText:'Certo',textContent:'Certo'}]});
+  const duplicateChoiceB = mockBrowserElement({tagName:'INPUT',type:'radio',labels:[{innerText:'Certo',textContent:'Certo'}]});
+  duplicateChoiceA.checked=false; duplicateChoiceB.checked=false;
+  browserTestElements=[duplicateChoiceA,duplicateChoiceB];
+  const ambiguousChoice=selectOptionOnPage('Certo');
+  assert.equal(ambiguousChoice.ok,false,'deve recusar opções duplicadas sem escopo');
+  assert.equal(duplicateChoiceA.clickCount+duplicateChoiceB.clickCount,0,'não deve escolher entre alternativas ambíguas');
+
   const password = mockBrowserElement({type:'password',name:'password',placeholder:'Senha'});
   const oneTimeCode = mockBrowserElement({type:'text',name:'otp',placeholder:'Código',autocomplete:'one-time-code'});
   browserTestElements = [password, oneTimeCode];
