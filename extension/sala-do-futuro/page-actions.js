@@ -1,22 +1,65 @@
 export function readPageOnPage() {
   const text = document.body?.innerText || '';
+  const isVisible = element => {
+    const rect = element.getBoundingClientRect?.();
+    if (!rect || rect.width <= 0 || rect.height <= 0 || element.hidden) return false;
+    const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+    return !style || (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0');
+  };
+  const controls = Array.from(document.querySelectorAll(
+    'a[href],button,input,textarea,select,[role="button"],[role="link"],[role="radio"],[role="checkbox"]'
+  )).filter(element => {
+    const tag = String(element.tagName || '').toLowerCase();
+    const type = String(element.type || '').toLowerCase();
+    if (tag === 'input' && ['password','hidden','file','image','submit','reset'].includes(type)) return false;
+    if (!isVisible(element) || element.disabled || String(element.getAttribute?.('aria-disabled')) === 'true') return false;
+    const hint = [element.name,element.id,element.placeholder,element.getAttribute?.('aria-label'),element.getAttribute?.('autocomplete')]
+      .join(' ').normalize('NFD').replace(/[\\u0300-\\u036f]/g,' ').toLowerCase();
+    return !/password|passwd|senha|token|one.?time|otp|verification|cvv|cvc|credit.?card|cartao/i.test(hint);
+  }).slice(0,80).map(element => {
+    const tag = String(element.tagName || '').toLowerCase();
+    const labels = Array.from(element.labels || []).map(label => label.innerText || label.textContent || '');
+    const label = element.getAttribute?.('aria-label')
+      || element.getAttribute?.('title')
+      || labels.join(' ')
+      || element.closest?.('label')?.innerText
+      || element.innerText
+      || element.textContent
+      || element.placeholder
+      || '';
+    const type = String(element.type || element.getAttribute?.('role') || tag).toLowerCase();
+    const options = tag === 'select'
+      ? Array.from(element.options || []).slice(0,30).map(option => String(option.label || option.textContent || '').trim()).filter(Boolean)
+      : undefined;
+    return {
+      tag, type,
+      label: String(label).replace(/\\s+/g,' ').trim().slice(0,180),
+      checked: typeof element.checked === 'boolean' ? element.checked : undefined,
+      selected: tag === 'select' ? String(element.selectedOptions?.[0]?.label || '') : undefined,
+      options,
+      disabled: Boolean(element.disabled),
+      required: Boolean(element.required)
+    };
+  }).filter(item => item.label);
   return {
     title: document.title || 'Página sem título',
     url: location.href,
-    text: text.slice(0, 20000)
+    text: text.slice(0, 20000),
+    controls
   };
 }
 
 
-
 export async function hoverElementOnPage(needle) {
   const normalize = value => String(value || '').normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+    .replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, ' ').trim().toLocaleLowerCase();
   const wanted = normalize(needle);
   if (!wanted) return {ok:false,message:'Informe o texto do cartão ou elemento para posicionar o mouse.'};
 
+  // Hover targets may be ordinary containers with no role, tabindex or pointer cursor.
+  // Match visible text first, then choose the deepest unique matching element.
   const candidates = Array.from(document.querySelectorAll(
-    'a[href],button,[role="button"],[role="link"],[onclick],[tabindex],div,article,li'
+    'a[href],button,[role],[onclick],[tabindex],section,article,li,div,span,p,h1,h2,h3,h4'
   ));
   const visible = candidates.filter(element => {
     const rect = element.getBoundingClientRect?.();
@@ -24,28 +67,20 @@ export async function hoverElementOnPage(needle) {
     if (element.hidden || element.disabled || normalize(element.getAttribute?.('aria-hidden')) === 'true') return false;
     const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
     if (style && (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0')) return false;
-    const tag = String(element.tagName || '').toLowerCase();
-    const role = normalize(element.getAttribute?.('role'));
-    let pointerCursor = false;
-    try { pointerCursor = style?.cursor === 'pointer'; } catch {}
-    return tag === 'a' || tag === 'button' || role === 'button' || role === 'link' ||
-      Boolean(element.hasAttribute?.('onclick')) ||
-      (element.hasAttribute?.('tabindex') && element.getAttribute('tabindex') !== '-1') ||
-      pointerCursor;
+    const label = element.getAttribute?.('aria-label') || element.innerText || element.textContent || element.title || '';
+    return normalize(label).includes(wanted);
   });
 
   const textOf = element => element.getAttribute?.('aria-label') ||
     element.innerText || element.textContent || element.title || '';
   const exact = visible.filter(element => normalize(textOf(element)) === wanted);
-  let matches = exact.length ? exact : visible.filter(element => normalize(textOf(element)).includes(wanted));
-  if (!matches.length) return {ok:false,message:'Não encontrei um cartão ou elemento visível com esse texto.'};
-
-  // Keep the deepest match within one card, but do not guess between separate matches.
+  let matches = exact.length ? exact : visible;
   matches = matches.filter(element =>
     !matches.some(other => other !== element && element.contains?.(other))
   );
+  if (!matches.length) return {ok:false,message:'Não encontrei um elemento visível com esse texto.'};
   if (matches.length > 1) {
-    return {ok:false,message:'Encontrei mais de um cartão com esse texto. Seja mais específico.'};
+    return {ok:false,message:'Encontrei mais de um elemento com esse texto. Informe um trecho mais específico.'};
   }
 
   const found = matches[0];
@@ -53,7 +88,6 @@ export async function hoverElementOnPage(needle) {
   const rect = found.getBoundingClientRect();
   const clientX = Math.round(rect.left + rect.width / 2);
   const clientY = Math.round(rect.top + rect.height / 2);
-
   const pointerInit = {
     bubbles:true,cancelable:true,composed:true,pointerId:1,pointerType:'mouse',
     isPrimary:true,clientX,clientY,button:0,buttons:0
@@ -66,7 +100,6 @@ export async function hoverElementOnPage(needle) {
     else event = new Event(type,{bubbles:init.bubbles,cancelable:init.cancelable});
     found.dispatchEvent(event);
   };
-
   dispatch('pointerover',pointerInit,true);
   dispatch('pointerenter',{...pointerInit,bubbles:false},true);
   dispatch('pointermove',pointerInit,true);
@@ -74,7 +107,6 @@ export async function hoverElementOnPage(needle) {
   dispatch('mouseenter',{...mouseInit,bubbles:false});
   dispatch('mousemove',mouseInit);
 
-  // Give page event handlers a moment to reveal menus/cards before inspecting controls.
   await new Promise(resolve => setTimeout(resolve,180));
   const controls = Array.from(document.querySelectorAll('a[href],button,[role="button"],[role="link"]'))
     .filter(element => {
@@ -83,19 +115,20 @@ export async function hoverElementOnPage(needle) {
       const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
       return !style || (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0');
     })
-    .map(element => String(element.getAttribute?.('aria-label') || element.innerText || element.textContent || element.title || '').replace(/\s+/g,' ').trim())
+    .map(element => String(element.getAttribute?.('aria-label') || element.innerText || element.textContent || element.title || '').replace(/\\s+/g,' ').trim())
     .filter(Boolean)
     .filter((label,index,all) => all.indexOf(label) === index)
     .slice(0,15);
 
   return {
     ok:true,
-    message:'Cartão localizado e rolado até o centro. Eventos de mouse foram enviados; nenhum botão foi clicado.',
-    target:String(textOf(found)).replace(/\s+/g,' ').trim().slice(0,240),
+    message:'Elemento localizado e rolado até o centro. Eventos de mouse foram enviados; nenhum botão foi clicado.',
+    target:String(textOf(found)).replace(/\\s+/g,' ').trim().slice(0,240),
     visibleControls:controls,
     note:'Eventos sintéticos podem acionar handlers JavaScript, mas não ativam necessariamente CSS :hover que exige o cursor físico.'
   };
 }
+
 
 export function clickElementOnPage(needle) {
   const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
@@ -162,6 +195,86 @@ export function clickElementOnPage(needle) {
   found.click();
   return {ok:true, message:'Clique executado em: ' + String(textOf(found)).trim()};
 }
+
+export function selectOptionOnPage(optionNeedle, questionNeedle = '') {
+  const normalize = value => String(value || '').normalize('NFD')
+    .replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ').trim().toLocaleLowerCase();
+  const wanted = normalize(optionNeedle);
+  const scopeText = normalize(questionNeedle);
+  if (!wanted) return {ok:false,message:'Informe o texto da opção que deseja selecionar.'};
+
+  const selector = 'input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]';
+  const all = Array.from(document.querySelectorAll(selector));
+  const rectVisible = element => {
+    const rect = element?.getBoundingClientRect?.();
+    if (!rect || rect.width <= 0 || rect.height <= 0 || element.hidden) return false;
+    const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+    return !style || (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0');
+  };
+  const labelOf = element => {
+    const labels = Array.from(element.labels || []).map(label => label.innerText || label.textContent || '');
+    const labelledBy = String(element.getAttribute?.('aria-labelledby') || '').split(/\\s+/).filter(Boolean)
+      .map(id => document.getElementById?.(id)?.innerText || document.getElementById?.(id)?.textContent || '');
+    return String(element.getAttribute?.('aria-label') || labels.join(' ') ||
+      element.closest?.('label')?.innerText || element.closest?.('label')?.textContent ||
+      labelledBy.join(' ') || element.innerText || element.textContent || '').replace(/\\s+/g,' ').trim();
+  };
+
+  let scopeRoot = null;
+  const questionMatch = scopeText.match(/(?:quest[aã]o\\s*)?0?(\\d+)/);
+  if (scopeText && questionMatch) {
+    const number = Number(questionMatch[1]);
+    const headingCandidates = Array.from(document.querySelectorAll(
+      'h1,h2,h3,h4,legend,[role="heading"],p,section,article,div,span'
+    )).filter(element => {
+      const label = normalize(element.innerText || element.textContent || '');
+      return new RegExp('^questao\\s*0?' + number + '(?:\\s|$|de)').test(label);
+    }).sort((a,b) => normalize(a.innerText || a.textContent || '').length -
+      normalize(b.innerText || b.textContent || '').length);
+    const heading = headingCandidates[0];
+    let parent = heading?.parentElement || null;
+    for (let depth=0; parent && depth<7; depth++,parent=parent.parentElement) {
+      if (all.some(control => parent.contains?.(control))) { scopeRoot=parent; break; }
+    }
+    if (!scopeRoot) {
+      return {ok:false,message:'Não consegui delimitar com segurança a questão ' + number + '. Não selecionei nenhuma opção.'};
+    }
+  }
+
+  const scoped = all.filter(element => {
+    if (scopeRoot && !scopeRoot.contains?.(element)) return false;
+    const type = String(element.type || element.getAttribute?.('role') || '').toLowerCase();
+    if (element.disabled || normalize(element.getAttribute?.('aria-disabled')) === 'true') return false;
+    const label = element.closest?.('label');
+    return rectVisible(element) || (label && rectVisible(label));
+  });
+  const matches = scoped.filter(element => {
+    const label = normalize(labelOf(element));
+    if (!label) return false;
+    if (/^[a-d]$/.test(wanted)) return new RegExp('^' + wanted + '(?:[).:：-]|\\s)').test(label);
+    return label === wanted || label.includes(wanted);
+  });
+  if (!matches.length) return {ok:false,message:'Não encontrei uma opção de rádio ou caixa de seleção com esse rótulo' +
+    (scopeText ? ' dentro de ' + questionNeedle : '') + '.'};
+  if (matches.length > 1) {
+    return {ok:false,message:'Encontrei mais de uma opção correspondente. Não marquei nada; informe a questão e o texto exato.'};
+  }
+
+  const found = matches[0];
+  const tag = String(found.tagName || '').toLowerCase();
+  const role = normalize(found.getAttribute?.('role'));
+  const before = typeof found.checked === 'boolean' ? found.checked : normalize(found.getAttribute?.('aria-checked')) === 'true';
+  if ((tag === 'input' && String(found.type).toLowerCase() === 'radio' && before) ||
+      (tag === 'input' && String(found.type).toLowerCase() === 'checkbox' && before) ||
+      ((role === 'radio' || role === 'checkbox') && before)) {
+    return {ok:true,message:'A opção já estava selecionada.',option:labelOf(found),selected:true};
+  }
+  found.click?.();
+  const after = typeof found.checked === 'boolean' ? found.checked : normalize(found.getAttribute?.('aria-checked')) === 'true';
+  if (!after) return {ok:false,message:'O clique foi tentado, mas não consegui confirmar que a opção foi selecionada.',option:labelOf(found)};
+  return {ok:true,message:'Opção selecionada e verificada.',option:labelOf(found),selected:true};
+}
+
 
 export function fillFieldOnPage(needle, text) {
   const normalize = value => String(value || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
