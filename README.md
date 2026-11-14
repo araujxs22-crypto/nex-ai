@@ -1,8 +1,10 @@
-# NEX AI · Core 0.6.0 · Browser Agent 1.4.0
+# NEX AI · Core 0.6.0 · Browser Agent 1.5.0 · Local Coding Agent
 
-Aplicação web com núcleo modular em JavaScript, motores de código e planejamento 3D, memória local e uma extensão Chrome Manifest V3 para ações explícitas em uma aba autorizada. O Core funciona localmente; recursos de pesquisa na interface dependem de conexão com a internet.
+Aplicação web com núcleo modular em JavaScript, agente de programação local para Windows e extensão Chrome Manifest V3 para automação explícita em uma aba autorizada. O foco atual do produto é programação e navegador. Os módulos antigos de planejamento 3D permanecem no repositório, mas não são o foco da interface principal. Recursos de download do modelo e acesso a páginas exigem internet.
 
 ## O que foi implementado
+
+**Escopo atual:** o NEX prioriza duas tarefas: trabalhar em arquivos de código dentro de um workspace local e executar ações controladas em uma aba Chrome autorizada. O LLM local interpreta conversas; as operações reais são realizadas pelos agentes especializados e precisam retornar confirmação antes de serem apresentadas como concluídas.
 
 - **Rede neural própria:** TinyMLP em JavaScript puro para classificar intenções. Usa TF-IDF com unigramas e bigramas, normalização L2, regularização L2, clipping de gradientes, validação, early stopping e persistência versionada. Ela é um roteador de ferramentas, não um modelo generativo.
 - **NEX Video Engine:** transforma uma descrição em um plano JSON de cena, objetos, câmera, iluminação e timeline. É um planejador, não um renderizador ou gerador de vídeo.
@@ -22,7 +24,7 @@ Aplicação web com núcleo modular em JavaScript, motores de código e planejam
 
 ## LLM local e arquitetura híbrida · Core 0.6.0
 
-O NEX agora separa duas responsabilidades:
+O NEX separa duas responsabilidades principais:
 
 1. **TinyMLP:** classifica a intenção e encaminha pedidos claros para os motores de código, vídeo, memória ou navegador.
 2. **LLM local:** gera respostas para conversa geral e intenções que o classificador não consegue resolver com confiança.
@@ -132,7 +134,7 @@ demo/index.html              demonstração offline
 `index.html` é a entrada do site e preserva a interface existente. Importa `src/index.js`, inicializa o NEX Core 0.6.0, treina e calibra o modelo na primeira abertura e persiste os pesos em `localStorage`. Pedidos de programação usam o Code Engine; pedidos de cena usam o Video Engine. O Core não executa código arbitrário nem grava arquivos diretamente no computador. Para publicar com GitHub Pages, configure a publicação pela raiz da branch que contém `index.html`.
 
 
-## Agentes especializados · Browser Agent 1.5.0
+## Agentes especializados · Browser Agent 1.5.0 + Coding Agent local
 
 O NEX é direcionado a duas áreas: programação e controle explícito do navegador. O popup 1.5.0 foi reorganizado em painéis de conexão, navegação, interação e conteúdo lido. O chat mostra uma faixa compacta de atividade durante pesquisa, leitura de página, chamadas ao LLM e operações de código.
 
