@@ -125,6 +125,50 @@ function renderProjectPreview(){
     frame.srcdoc='<!doctype html><html lang="pt-BR"><body style="font:14px Arial;padding:24px;color:#202638">Falha ao montar a prévia isolada. '+String(error.message).replace(/[&<>"]/g,'')+'</body></html>';
   }
 }
+function setActivity(message=''){
+ const indicator=$('nex-activity'),label=$('nex-activity-text');
+ if(!indicator||!label)return;
+ const value=String(message||'').trim();
+ indicator.hidden=!value;
+ if(value)label.textContent=value;
+}
+function browserStepLabel(command){
+ const labels={STATUS:'Verificando a conexão com o navegador…',READ_PAGE:'Lendo o conteúdo da página…',NAVIGATE:'Abrindo o endereço solicitado…',HOVER:'Localizando o elemento na página…',CLICK:'Clicando no elemento solicitado…',SELECT_OPTION:'Selecionando a opção indicada…',FILL_FIELD:'Preenchendo o campo solicitado…',BACK:'Voltando uma página…',FORWARD:'Avançando uma página…',RELOAD:'Recarregando a página…'};
+ return labels[command.type]||'Executando ação no navegador…';
+}
+async function executeBrowserPlan(steps){
+ const outputs=[];
+ for(let i=0;i<steps.length;i++){
+  const command=steps[i];
+  setActivity('Navegador · etapa '+(i+1)+' de '+steps.length+': '+browserStepLabel(command));
+  const result=await window.nexBrowserAgent.run(command);
+  if(command.type==='READ_PAGE'){
+   window.nexLastBrowserPage={title:String(result.title||''),url:String(result.url||''),text:String(result.text||''),controls:Array.isArray(result.controls)?result.controls:[],readAt:Date.now()};
+   outputs.push('Página lida: '+(result.title||'Sem título')+'\nURL: '+(result.url||'')+'\n\n'+String(result.text||'').slice(0,5000));
+  }else outputs.push(result.message||'Etapa '+(i+1)+' concluída.');
+ }
+ return outputs.join('\n\n');
+}
+async function runCodingCommand(command){
+ if(!window.nexCodingAgent)throw new Error('Extensão NEX atualizada não detectada. Atualize para a versão 1.5.0.');
+ if(command.type==='list'){
+  const data=await window.nexCodingAgent.run(command);
+  return 'Arquivos em '+data.workspace+':\n'+data.items.map(item=>(item.type==='directory'?'[PASTA] ':'[ARQUIVO] ')+item.path).join('\n');
+ }
+ if(command.type==='read'){
+  const data=await window.nexCodingAgent.run(command);
+  return 'Arquivo: '+data.path+'\n\n'+data.content;
+ }
+ if(command.type==='create'||command.type==='write'){
+  const data=await window.nexCodingAgent.run(command);
+  return (data.created?'Arquivo criado: ':'Arquivo atualizado: ')+data.path+' ('+data.bytes+' bytes).';
+ }
+ if(command.type==='run'){
+  const data=await window.nexCodingAgent.run(command);
+  return 'Comando: '+command.command+'\nCódigo de saída: '+data.exitCode+(data.timedOut?' · tempo limite excedido':'')+'\n\n'+(data.stdout||'')+(data.stderr?'\nERROS / AVISOS:\n'+data.stderr:'');
+ }
+ throw new Error('Operação de programação não reconhecida.');
+}
 async function sendMsg(){
  const input=$('msg'),text=input.value.trim();
  if(!text)return;
