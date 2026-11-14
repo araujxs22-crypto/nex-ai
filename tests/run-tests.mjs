@@ -228,7 +228,7 @@ assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', '
 assert.equal(salaExtensionManifest.background.service_worker, 'background.js');
 assert.equal(salaExtensionManifest.background.type, 'module');
 assert.equal(salaExtensionManifest.content_scripts[0].matches[0], 'https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app/*');
-assert.equal(salaExtensionManifest.host_permissions, undefined);
+assert.deepEqual(salaExtensionManifest.host_permissions, ['http://127.0.0.1:4177/*']);
 const browserBackgroundSource = readFileSync(new URL('../extension/sala-do-futuro/background.js', import.meta.url), 'utf8');
 assert.match(browserBackgroundSource, /case 'COMMAND': return queueCommand\(message\.payload\);/,
   'o bridge deve encaminhar o envelope do comando sem embrulhá-lo duas vezes');
