@@ -27,6 +27,6 @@ jobs:
       - name: Run regression suite
         run: npm test
       - name: Check Chrome extension JavaScript
-        run: node --check extension/sala-do-futuro/popup.js && node --check extension/sala-do-futuro/policy.js && node --check extension/sala-do-futuro/page-actions.js
+        run: node --check extension/sala-do-futuro/background.js && node --check extension/sala-do-futuro/bridge.js && node --check extension/sala-do-futuro/protocol.js && node --check extension/sala-do-futuro/popup.js && node --check extension/sala-do-futuro/policy.js && node --check extension/sala-do-futuro/page-actions.js && node --check src/browser/extension-client.js
       - name: Validate Chrome extension manifest
         run: node -e "const m=require('./extension/sala-do-futuro/manifest.json'); if(m.manifest_version!==3) process.exit(1); console.log(m.name)"
