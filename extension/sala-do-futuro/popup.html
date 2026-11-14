@@ -4,6 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NEX — Agente de Navegador</title>
 <style>
+.agent-box{border:1px solid #46506a;border-radius:9px;padding:10px;margin:10px 0;background:#1b2030}.agent-box button{width:100%;margin:5px 0}.agent-box .code-row{display:flex;gap:6px}.agent-box .code-row input{min-width:0}.agent-box .code-row button{width:74px;flex-shrink:0}.agent-note{font-size:11px;color:#aeb7cc;margin:5px 0}
 :root{color-scheme:dark;font:13px/1.45 "Segoe UI",Arial,sans-serif;background:#151823;color:#edf0fa}
 *{box-sizing:border-box}body{width:360px;margin:0;padding:15px}
 h1{font-size:17px;margin:0 0 4px}.sub,.hint{color:#aeb7cc;font-size:11px}
@@ -18,7 +19,18 @@ small{color:#8290aa}.warning{color:#e6c98a}
 </style></head>
 <body>
 <h1>NEX — Agente de Navegador</h1>
-<p class="sub">A extensão atua somente na aba atual e apenas quando você aciona um comando.</p>
+<p class="sub">A extensão atua na aba HTTPS que você autorizar. O NEX envia comandos somente depois do pareamento.</p>
+<div class="agent-box">
+  <strong>Conexão com o NEX</strong>
+  <p id="agentStatus" class="agent-note" role="status">Verificando estado…</p>
+  <button id="authorizeAgentTab" class="primary">Autorizar esta aba</button>
+  <button id="createPairingCode" disabled>Gerar código de pareamento</button>
+  <div id="pairCodeRow" class="code-row" hidden><input id="pairingCode" readonly aria-label="Código de pareamento"><button id="copyPairingCode">Copiar</button></div>
+  <button id="pauseAgent" style="background:#8f3c4a">Parar agente (Kill-Switch)</button>
+  <button id="resumeAgent">Retomar agente</button>
+  <button id="disconnectAgent">Desconectar e revogar autorização</button>
+  <p class="agent-note">A autorização é por site. Ao navegar para outro domínio, autorize novamente pela extensão.</p>
+</div>
 <label for="googleQuery">Pesquisar no Google</label>
 <input id="googleQuery" type="search" placeholder="Digite o que deseja pesquisar">
 <button id="googleSearch" class="primary" style="width:100%;margin-top:7px">Pesquisar no Google</button>
