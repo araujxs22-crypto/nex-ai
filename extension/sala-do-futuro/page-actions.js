@@ -14,7 +14,7 @@ export function readPageOnPage() {
     if (tag === 'input' && ['password','hidden','file','image','submit','reset'].includes(type)) return false;
     if (!isVisible(element) || element.disabled || String(element.getAttribute?.('aria-disabled')) === 'true') return false;
     const hint = [element.name,element.id,element.placeholder,element.getAttribute?.('aria-label'),element.getAttribute?.('autocomplete')]
-      .join(' ').normalize('NFD').replace(/[\\u0300-\\u036f]/g,' ').toLowerCase();
+      .join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,' ').toLowerCase();
     return !/password|passwd|senha|token|one.?time|otp|verification|cvv|cvc|credit.?card|cartao/i.test(hint);
   }).slice(0,80).map(element => {
     const tag = String(element.tagName || '').toLowerCase();
@@ -33,7 +33,7 @@ export function readPageOnPage() {
       : undefined;
     return {
       tag, type,
-      label: String(label).replace(/\\s+/g,' ').trim().slice(0,180),
+      label: String(label).replace(/\s+/g,' ').trim().slice(0,180),
       checked: typeof element.checked === 'boolean' ? element.checked : undefined,
       selected: tag === 'select' ? String(element.selectedOptions?.[0]?.label || '') : undefined,
       options,
@@ -52,7 +52,7 @@ export function readPageOnPage() {
 
 export async function hoverElementOnPage(needle) {
   const normalize = value => String(value || '').normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, ' ').trim().toLocaleLowerCase();
+    .replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
   const wanted = normalize(needle);
   if (!wanted) return {ok:false,message:'Informe o texto do cartão ou elemento para posicionar o mouse.'};
 
@@ -115,7 +115,7 @@ export async function hoverElementOnPage(needle) {
       const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
       return !style || (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0');
     })
-    .map(element => String(element.getAttribute?.('aria-label') || element.innerText || element.textContent || element.title || '').replace(/\\s+/g,' ').trim())
+    .map(element => String(element.getAttribute?.('aria-label') || element.innerText || element.textContent || element.title || '').replace(/\s+/g,' ').trim())
     .filter(Boolean)
     .filter((label,index,all) => all.indexOf(label) === index)
     .slice(0,15);
@@ -123,7 +123,7 @@ export async function hoverElementOnPage(needle) {
   return {
     ok:true,
     message:'Elemento localizado e rolado até o centro. Eventos de mouse foram enviados; nenhum botão foi clicado.',
-    target:String(textOf(found)).replace(/\\s+/g,' ').trim().slice(0,240),
+    target:String(textOf(found)).replace(/\s+/g,' ').trim().slice(0,240),
     visibleControls:controls,
     note:'Eventos sintéticos podem acionar handlers JavaScript, mas não ativam necessariamente CSS :hover que exige o cursor físico.'
   };
@@ -198,7 +198,7 @@ export function clickElementOnPage(needle) {
 
 export function selectOptionOnPage(optionNeedle, questionNeedle = '') {
   const normalize = value => String(value || '').normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ').trim().toLocaleLowerCase();
+    .replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLocaleLowerCase();
   const wanted = normalize(optionNeedle);
   const scopeText = normalize(questionNeedle);
   if (!wanted) return {ok:false,message:'Informe o texto da opção que deseja selecionar.'};
@@ -213,15 +213,15 @@ export function selectOptionOnPage(optionNeedle, questionNeedle = '') {
   };
   const labelOf = element => {
     const labels = Array.from(element.labels || []).map(label => label.innerText || label.textContent || '');
-    const labelledBy = String(element.getAttribute?.('aria-labelledby') || '').split(/\\s+/).filter(Boolean)
+    const labelledBy = String(element.getAttribute?.('aria-labelledby') || '').split(/\s+/).filter(Boolean)
       .map(id => document.getElementById?.(id)?.innerText || document.getElementById?.(id)?.textContent || '');
     return String(element.getAttribute?.('aria-label') || labels.join(' ') ||
       element.closest?.('label')?.innerText || element.closest?.('label')?.textContent ||
-      labelledBy.join(' ') || element.innerText || element.textContent || '').replace(/\\s+/g,' ').trim();
+      labelledBy.join(' ') || element.innerText || element.textContent || '').replace(/\s+/g,' ').trim();
   };
 
   let scopeRoot = null;
-  const questionMatch = scopeText.match(/(?:quest[aã]o\\s*)?0?(\\d+)/);
+  const questionMatch = scopeText.match(/(?:quest[aã]o\s*)?0?(\d+)/);
   if (scopeText && questionMatch) {
     const number = Number(questionMatch[1]);
     const headingCandidates = Array.from(document.querySelectorAll(
