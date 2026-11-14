@@ -190,7 +190,7 @@ try {
 
 const salaExtensionManifest = JSON.parse(readFileSync(new URL('../extension/sala-do-futuro/manifest.json', import.meta.url), 'utf8'));
 assert.equal(salaExtensionManifest.manifest_version, 3);
-assert.equal(salaExtensionManifest.version, '1.3.0');
+assert.equal(salaExtensionManifest.version, '1.4.0');
 assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', 'storage', 'clipboardWrite']);
 assert.equal(salaExtensionManifest.background.service_worker, 'background.js');
 assert.equal(salaExtensionManifest.background.type, 'module');
