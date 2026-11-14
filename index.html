@@ -157,12 +157,12 @@ async function sendMsg(){
        controls:Array.isArray(result.controls)?result.controls:[],
        readAt:Date.now()
       };
-      answer='Página: '+(result.title||'Sem título')+'\\nURL: '+(result.url||'')+'\\n\\n'+(result.text||'Nenhum texto visível encontrado.');
+      answer='Página: '+(result.title||'Sem título')+'\nURL: '+(result.url||'')+'\n\n'+(result.text||'Nenhum texto visível encontrado.');
       const inspectedControls=window.nexLastBrowserPage.controls;
       if(inspectedControls.length){
-       answer+='\\n\\nCONTROLES DETECTADOS ('+inspectedControls.length+'):\\n'+inspectedControls.slice(0,18).map(item=>
+       answer+='\n\nCONTROLES DETECTADOS ('+inspectedControls.length+'):\n'+inspectedControls.slice(0,18).map(item=>
         '- '+(item.label||'(sem rótulo)')+' ['+item.type+']'+(item.checked===true?' — selecionado':'')
-       ).join('\\n');
+       ).join('\n');
       }
       // Feed the read page into the school-task parser so follow-up questions
       // retain the current activity as context.
@@ -170,13 +170,15 @@ async function sendMsg(){
        await window.nexReady;
        const pageAnalysis=window.nexCore.ask(window.nexLastBrowserPage.text);
        if(pageAnalysis?.type==='school-task'){
-        answer+='\\n\\nCONTEXTO DA ATIVIDADE:\\n'+pageAnalysis.text;
+        answer+='\n\nCONTEXTO DA ATIVIDADE:\n'+pageAnalysis.text;
        }
       }
     }else if(browserCommand.type==='HOVER'){
      answer=(result.message||'Elemento localizado.')+'\nElemento: '+(result.target||browserCommand.target);
      if(result.visibleControls?.length)answer+='\nControles visíveis: '+result.visibleControls.join(' · ');
      if(result.note)answer+='\nNota: '+result.note;
+    }else if(browserCommand.type==='SELECT_OPTION'){
+     answer=(result.message||'Seleção processada.')+(result.option?'\nOpção: '+result.option:'');
     }else if(result.message){answer=result.message;}
     else{answer='Ação concluída.';}
    }
