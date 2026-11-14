@@ -1,4 +1,4 @@
-const APP_ORIGIN='https://nex-ai-preview.vercel.app';
+const APP_ORIGIN='https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app';
 const CHANNEL='nex-browser-agent';
 const pending=new Map();
 let counter=0;
