@@ -5,7 +5,7 @@ import {join, dirname} from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {runInNewContext} from 'node:vm';
 import {NexCore, TinyMLP, NexMemory, TextVectorizer} from '../src/index.js';
-import {LOCAL_MODEL, LOCAL_MODEL_OPTIONS, loadLocalLLM, generateLocalReply} from '../src/local-llm.js';
+import {LOCAL_MODEL, LOCAL_MODEL_OPTIONS, loadLocalLLM, generateLocalReply, isDegenerateAnswer} from '../src/local-llm.js';
 import {NexCodeEngine} from '../src/engines/code-engine.js';
 import {buildProjectPreview} from '../src/engines/project-preview.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
@@ -14,7 +14,8 @@ import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UN
 import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';
 import {NEX_APP_ORIGIN, isNexAppOrigin, isSafeHttpsUrl, isSafePairingCode, validateBrowserCommand} from '../extension/sala-do-futuro/protocol.js';
 import {clickElementOnPage, fillFieldOnPage, hoverElementOnPage, selectOptionOnPage} from '../extension/sala-do-futuro/page-actions.js';
-import {parseNexBrowserCommand} from '../src/browser/command-parser.js';
+import {parseNexBrowserCommand, parseNexBrowserPlan} from '../src/browser/command-parser.js';
+import {parseNexCodingCommand} from '../src/agent/coding-command-parser.js';
 
 
 assert.equal(isSupportedPageUrl('https://saladofuturo.educacao.sp.gov.br/'), true);
@@ -221,7 +222,8 @@ try {
 
 const salaExtensionManifest = JSON.parse(readFileSync(new URL('../extension/sala-do-futuro/manifest.json', import.meta.url), 'utf8'));
 assert.equal(salaExtensionManifest.manifest_version, 3);
-assert.equal(salaExtensionManifest.version, '1.4.0');
+assert.equal(salaExtensionManifest.version, '1.5.0');
+assert.ok(salaExtensionManifest.host_permissions.includes('http://127.0.0.1:4177/*'));
 assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', 'storage', 'clipboardWrite']);
 assert.equal(salaExtensionManifest.background.service_worker, 'background.js');
 assert.equal(salaExtensionManifest.background.type, 'module');
@@ -918,3 +920,26 @@ console.log(JSON.stringify({
   ],
   filesPreserved: ['src/engines/video-engine.js', 'src/engines/code-engine.js']
 }, null, 2));
+
+
+const browserPlanFixture=parseNexBrowserPlan('ler página; clicar em Pesquisar; preencher campo Nome com Kaue');
+assert.equal(browserPlanFixture.length,3,'o planejador deve dividir comandos explícitos em etapas');
+assert.equal(browserPlanFixture[0].type,'READ_PAGE');
+assert.equal(browserPlanFixture[1].type,'CLICK');
+assert.equal(browserPlanFixture[2].type,'FILL_FIELD');
+assert.equal(parseNexBrowserPlan('ler página; texto sem comando'),null,'planos incompletos devem ser rejeitados');
+assert.deepEqual(parseNexCodingCommand('listar arquivos'),{type:'list',path:'.'});
+assert.deepEqual(parseNexCodingCommand('ler arquivo src/app.js'),{type:'read',path:'src/app.js'});
+assert.deepEqual(parseNexCodingCommand('executar npm test'),{type:'run',command:'npm test'});
+assert.equal(parseNexCodingCommand('criar arquivo notas.txt com conteúdo: olá').content,'olá');
+assert.equal(parseNexCodingCommand('executar rm -rf .'),null,'comandos fora da lista permitida devem ser rejeitados');
+assert.equal(isDegenerateAnswer('a sua formina, a sua formina, a sua formina, a sua formina, a sua formina'),false,'respostas curtas não devem ser bloqueadas');
+assert.equal(isDegenerateAnswer('a sua formina a sua formina a sua formina a sua formina a sua formina a sua formina a sua formina'),true,'loops de palavras devem ser rejeitados');
+const localAgentSource=readFileSync(new URL('../local-agent/server.mjs',import.meta.url),'utf8');
+assert.ok(localAgentSource.includes("const HOST = '127.0.0.1'"),'o agente local deve escutar apenas no loopback');
+assert.ok(localAgentSource.includes("timingSafeEqual"),'o agente local deve comparar tokens em tempo constante');
+assert.ok(localAgentSource.includes("'/api/commands/run'"),'o agente local deve oferecer execução controlada de comandos');
+assert.ok(localAgentSource.includes('Use caminhos relativos dentro da pasta de trabalho.'),'o agente local deve restringir caminhos ao workspace');
+assert.ok(integratedSite.includes('id="nex-activity"'),'a interface deve ter o indicador compacto de atividade');
+assert.ok(integratedSite.includes('Navegador · etapa'),'planos devem exibir a etapa ativa');
+assert.ok(integratedSite.includes('nex-local-agent-connect'),'o site deve expor conexão ao agente local');
