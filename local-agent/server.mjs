@@ -36,6 +36,7 @@ async function checkedExisting(input) {
 }
 async function checkedParent(input) {
   const candidate = resolveRelative(input);
+  await fs.mkdir(path.dirname(candidate), {recursive:true});
   const parent = await fs.realpath(path.dirname(candidate));
   if (!insideRoot(parent)) throw new Error('A pasta de destino aponta para fora do workspace.');
   return {absolute:path.join(parent,path.basename(candidate)),parent};
