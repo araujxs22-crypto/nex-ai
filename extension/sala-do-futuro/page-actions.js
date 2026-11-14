@@ -8,14 +8,25 @@ export function readPageOnPage() {
 }
 
 export function clickElementOnPage(needle) {
-  const normalize = value => String(value || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+  const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
   const wanted = normalize(needle);
   if (!wanted) return {ok:false, message:'Digite o texto do link ou botão.'};
 
-  const candidates = Array.from(document.querySelectorAll('a[href],button,input[type="button"],[role="button"]'));
+  // Include accessible controls and common clickable task cards. A click on a
+  // text descendant bubbles to a card's delegated handler, like a normal click.
+  const candidates = Array.from(document.querySelectorAll(
+    'a[href],button,input[type="button"],[role="button"],[role="link"],[onclick],[tabindex],div,article,li'
+  ));
   const visible = candidates.filter(element => {
     const tag = String(element.tagName || '').toLowerCase();
     const type = String(element.type || '').toLowerCase();
+    const role = normalize(element.getAttribute?.('role'));
+    let pointerCursor = false;
+    try { pointerCursor = typeof getComputedStyle === 'function' && getComputedStyle(element).cursor === 'pointer'; } catch {}
+    const semanticControl = tag === 'a' || tag === 'button' || (tag === 'input' && type === 'button') ||
+      role === 'button' || role === 'link' || element.hasAttribute?.('onclick') ||
+      (element.hasAttribute?.('tabindex') && element.getAttribute('tabindex') !== '-1');
+    if (!semanticControl && !pointerCursor) return false;
     if (element.disabled || normalize(element.getAttribute?.('aria-disabled')) === 'true') return false;
     if (type === 'submit' || type === 'reset' || type === 'image') return false;
     if (tag === 'button' && type !== 'button') return false;
@@ -45,8 +56,12 @@ export function clickElementOnPage(needle) {
     || element.title
     || '';
   const exact = visible.filter(element => normalize(textOf(element)) === wanted);
-  const matches = exact.length ? exact : visible.filter(element => normalize(textOf(element)).includes(wanted));
-  if (matches.length === 0) return {ok:false, message:'Não encontrei um link ou botão visível com esse texto.'};
+  let matches = exact.length ? exact : visible.filter(element => normalize(textOf(element)).includes(wanted));
+  if (matches.length === 0) return {ok:false, message:'Não encontrei um controle ou cartão clicável visível com esse texto.'};
+  // Prefer the smallest matching clickable card/control over its page container.
+  const lengths = matches.map(element => normalize(textOf(element)).length);
+  const shortest = Math.min(...lengths);
+  matches = matches.filter((element,index) => lengths[index] === shortest);
   if (matches.length > 1) {
     const names = matches.slice(0, 4).map(textOf).filter(Boolean).join(' · ');
     return {ok:false, message:'Encontrei mais de um elemento. Use um texto mais específico: ' + names};
