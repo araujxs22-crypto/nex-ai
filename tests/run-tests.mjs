@@ -22,9 +22,9 @@ assert.equal(isSupportedPageUrl('https://saladofuturo.educacao.sp.gov.br.evil.ex
 assert.equal(isSupportedPageUrl('https://example.com/'), true);
 assert.equal(isSupportedPageUrl('https://usuario:senha@saladofuturo.educacao.sp.gov.br/'), false);
 
-assert.equal(NEX_APP_ORIGIN,'https://nex-ai-preview.vercel.app');
-assert.equal(isNexAppOrigin('https://nex-ai-preview.vercel.app/'),true);
-assert.equal(isNexAppOrigin('https://nex-ai-preview.vercel.app.evil.example/'),false);
+assert.equal(NEX_APP_ORIGIN,'https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app');
+assert.equal(isNexAppOrigin('https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app/'),true);
+assert.equal(isNexAppOrigin('https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app.evil.example/'),false);
 assert.equal(isNexAppOrigin('http://nex-ai-preview.vercel.app/'),false);
 assert.equal(isSafeHttpsUrl('https://example.com/path'),true);
 assert.equal(isSafeHttpsUrl('http://example.com/'),false);
@@ -130,7 +130,7 @@ assert.equal(salaExtensionManifest.manifest_version, 3);
 assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', 'storage', 'clipboardWrite']);
 assert.equal(salaExtensionManifest.background.service_worker, 'background.js');
 assert.equal(salaExtensionManifest.background.type, 'module');
-assert.equal(salaExtensionManifest.content_scripts[0].matches[0], 'https://nex-ai-preview.vercel.app/*');
+assert.equal(salaExtensionManifest.content_scripts[0].matches[0], 'https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app/*');
 assert.equal(salaExtensionManifest.host_permissions, undefined);
 
 const codeEngine = new NexCodeEngine();
