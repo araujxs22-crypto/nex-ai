@@ -7,7 +7,7 @@
     const message=event.data;
     if(!message||message.channel!==CHANNEL||message.source!=='nex-page')return;
     if(typeof message.requestId!=='string'||message.requestId.length>100)return;
-    if(!['STATUS','PAIR','UNPAIR','COMMAND'].includes(message.type))return;
+    if(!['STATUS','PAIR','UNPAIR','COMMAND','LOCAL_SETUP','LOCAL_STATUS','LOCAL_COMMAND'].includes(message.type))return;
     try{
       chrome.runtime.sendMessage({source:'nex-bridge',requestId:message.requestId,type:message.type,payload:message.payload||{}},response=>{
         const runtimeError=chrome.runtime.lastError;
