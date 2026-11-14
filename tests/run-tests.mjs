@@ -11,6 +11,7 @@ import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
 import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';
+import {NEX_APP_ORIGIN, isNexAppOrigin, isSafeHttpsUrl, isSafePairingCode, validateBrowserCommand} from '../extension/sala-do-futuro/protocol.js';
 import {clickElementOnPage, fillFieldOnPage} from '../extension/sala-do-futuro/page-actions.js';
 
 
@@ -20,6 +21,24 @@ assert.equal(isSupportedPageUrl('http://saladofuturo.educacao.sp.gov.br/'), fals
 assert.equal(isSupportedPageUrl('https://saladofuturo.educacao.sp.gov.br.evil.example/'), true);
 assert.equal(isSupportedPageUrl('https://example.com/'), true);
 assert.equal(isSupportedPageUrl('https://usuario:senha@saladofuturo.educacao.sp.gov.br/'), false);
+
+assert.equal(NEX_APP_ORIGIN,'https://nex-ai-preview.vercel.app');
+assert.equal(isNexAppOrigin('https://nex-ai-preview.vercel.app/'),true);
+assert.equal(isNexAppOrigin('https://nex-ai-preview.vercel.app.evil.example/'),false);
+assert.equal(isNexAppOrigin('http://nex-ai-preview.vercel.app/'),false);
+assert.equal(isSafeHttpsUrl('https://example.com/path'),true);
+assert.equal(isSafeHttpsUrl('http://example.com/'),false);
+assert.equal(isSafeHttpsUrl('javascript:alert(1)'),false);
+assert.equal(isSafeHttpsUrl('https://user:pass@example.com/'),false);
+assert.equal(isSafePairingCode('0123456789abcdef0123456789abcdef'),true);
+assert.equal(isSafePairingCode('short-code'),false);
+assert.deepEqual(validateBrowserCommand({type:'READ_PAGE'}),{ok:true,command:{type:'READ_PAGE'}});
+assert.equal(validateBrowserCommand({type:'NAVIGATE',url:'http://example.com'}).ok,false);
+assert.equal(validateBrowserCommand({type:'NAVIGATE',url:'https://user:pass@example.com'}).ok,false);
+assert.equal(validateBrowserCommand({type:'FILL_FIELD',field:'senha',value:'x'}).ok,false);
+assert.equal(validateBrowserCommand({type:'FILL_FIELD',field:'Nome',value:'Kaue'}).ok,true);
+assert.equal(validateBrowserCommand({type:'RUN_SCRIPT',code:'alert(1)'}).ok,false);
+
 
 function mockBrowserElement({
   tagName='INPUT', type='text', name='', id='', placeholder='', ariaLabel='',
