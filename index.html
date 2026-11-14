@@ -166,7 +166,7 @@ async function sendMsg(){
       }
       // Feed the read page into the school-task parser so follow-up questions
       // retain the current activity as context.
-      if(window.nexCore&&window.nexReady&&/quest[aã]o\\s+0?\\d+\\s+de\\s+0?\\d+/i.test(window.nexLastBrowserPage.text)){
+      if(window.nexCore&&window.nexReady&&/quest[aã]o\s+0?\d+\s+de\s+0?\d+/i.test(window.nexLastBrowserPage.text)){
        await window.nexReady;
        const pageAnalysis=window.nexCore.ask(window.nexLastBrowserPage.text);
        if(pageAnalysis?.type==='school-task'){
