@@ -47,6 +47,8 @@ assert.deepEqual(
   {type:'READ_PAGE'}
 );
 assert.deepEqual(parseNexBrowserCommand('NEX abrir https://example.com'), {type:'NAVIGATE',url:'https://example.com'});
+assert.deepEqual(parseNexBrowserCommand('clique em prosseguir para tarefa'), {type:'CLICK',target:'prosseguir para tarefa'});
+assert.deepEqual(parseNexBrowserCommand('clique no cartão da Tarefa 5'), {type:'CLICK',target:'cartão da Tarefa 5'});
 assert.equal(parseNexBrowserCommand('leia a página e clique em Enviar'), null,
   'uma solicitação que mistura leitura com ações deve exigir um comando explícito separado');
 
@@ -54,12 +56,12 @@ assert.equal(parseNexBrowserCommand('leia a página e clique em Enviar'), null,
 
 function mockBrowserElement({
   tagName='INPUT', type='text', name='', id='', placeholder='', ariaLabel='',
-  autocomplete='', value='', text='', href='', labels=[], options=[], editable=false
+  autocomplete='', value='', text='', href='', labels=[], options=[], editable=false, cursor='default'
 }={}) {
   let currentValue = value;
   const events = [];
   return {
-    tagName, type, name, id, placeholder, autocomplete, labels, options,
+    tagName, type, name, id, placeholder, autocomplete, labels, options, cursor,
     innerText:text, textContent:text, disabled:false, readOnly:false,
     isContentEditable:editable, events, clickCount:0,
     get value() { return currentValue; },
@@ -79,9 +81,17 @@ function mockBrowserElement({
   };
 }
 const originalDocumentForBrowserTests = globalThis.document;
+const originalGetComputedStyleForBrowserTests = globalThis.getComputedStyle;
 let browserTestElements = [];
 globalThis.document = {querySelectorAll: () => browserTestElements};
+globalThis.getComputedStyle = element => ({cursor: element.cursor || 'default'});
 try {
+  const taskCard = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
+  browserTestElements = [taskCard];
+  const taskCardResult = clickElementOnPage('Tarefa 5: Religião e poder na Idade Média');
+  assert.equal(taskCardResult.ok, true, 'deve reconhecer e clicar em cartão de tarefa com cursor clicável');
+  assert.equal(taskCard.clickCount, 1);
+
   const searchInput = mockBrowserElement({name:'q',placeholder:'Pesquisar'});
   browserTestElements = [searchInput];
   const fillResult = fillFieldOnPage('Pesquisar', 'melhores jogos leves');
@@ -135,6 +145,8 @@ try {
 } finally {
   if (originalDocumentForBrowserTests === undefined) delete globalThis.document;
   else globalThis.document = originalDocumentForBrowserTests;
+  if (originalGetComputedStyleForBrowserTests === undefined) delete globalThis.getComputedStyle;
+  else globalThis.getComputedStyle = originalGetComputedStyleForBrowserTests;
 }
 
 const salaExtensionManifest = JSON.parse(readFileSync(new URL('../extension/sala-do-futuro/manifest.json', import.meta.url), 'utf8'));
