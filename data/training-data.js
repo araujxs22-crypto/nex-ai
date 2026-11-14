@@ -1,4 +1,4 @@
-export const DATASET_VERSION = '0.2.1-intents-2';
+export const DATASET_VERSION = '0.3.0-ngram-tfidf-1';
 
 export const TRAIN_EXAMPLES = [
   // video: planejamento de cenas, animação, câmera e iluminação

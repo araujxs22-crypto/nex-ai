@@ -1,30 +1,36 @@
-# NEX — Leitor da Sala do Futuro (Chrome)
+# NEX — Agente de Navegador (Chrome)
 
-Extensão Manifest V3 sem Node.js, servidor local, Playwright ou APIs externas.
+Extensão Manifest V3 que conecta o site NEX ao Chrome por uma ponte local de mensagens. Não usa WebSocket, servidor local, Playwright ou API externa.
 
-## Instalação no Chrome
+## Instalação
+1. Baixe e extraia o ZIP desta branch.
+2. Abra chrome://extensions.
+3. Ative o Modo do desenvolvedor.
+4. Clique em Carregar sem compactação.
+5. Selecione a pasta extension/sala-do-futuro.
+6. Fixe a extensão na barra do Chrome.
 
-1. Baixe o ZIP do repositório NEX e extraia-o.
-2. Abra `chrome://extensions`.
-3. Ative **Modo do desenvolvedor**.
-4. Clique em **Carregar sem compactação**.
-5. Selecione a pasta `extension/sala-do-futuro` extraída do ZIP.
-6. Fixe a extensão NEX na barra do Chrome pelo menu de extensões.
+## Pareamento e autorização
+1. Abra a página HTTPS que deseja controlar.
+2. Abra o popup da extensão nessa aba e clique em Autorizar esta aba.
+3. Gere e copie o código temporário (válido por cinco minutos).
+4. Abra https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app e entre em Agente de Navegador · Chrome.
+5. Cole o código e clique em Conectar extensão.
+6. No chat do NEX, use: ler página; passar mouse sobre Tarefa 5; abrir https://exemplo.com; clicar em Pesquisar; preencher campo Nome com Kaue; marcar Certo na questão 2; voltar; avançar; recarregar.
 
-## Uso
+O comando "passar mouse sobre ..." localiza elementos pelo texto mesmo quando são contêineres comuns, rola o elemento para o centro da tela e envia eventos pointer/mouse para handlers JavaScript. A leitura da página também retorna um inventário limitado de controles visíveis (rótulos, tipos, opções e estado marcado), sem coletar valores de campos sensíveis. O comando "marcar Certo na questão 2" seleciona radio/checkbox por rótulo dentro da questão indicada e confirma o estado após a ação; correspondências ambíguas são recusadas. Eventos sintéticos não ativam necessariamente regras CSS :hover que dependam do cursor físico; nessa situação, será necessário adicionar uma etapa de controle de mouse real com permissão extra do Chrome. O comando apenas revela/inspeciona elementos; não clica no botão revelado.
 
-1. Abra `https://saladofuturo.educacao.sp.gov.br/` e entre normalmente.
-2. Abra a atividade que deseja estudar.
-3. Clique no ícone da extensão NEX.
-4. Clique em **Ler página atual**.
-5. Clique em **Copiar texto para o NEX**.
-6. Volte à conversa do NEX, cole com `Ctrl+V` e peça uma explicação passo a passo.
+Ao navegar para outro domínio, a permissão temporária do Chrome pode ser revogada. Abra o popup na página de destino e autorize-a novamente antes de continuar.
 
-## Permissões e privacidade
+## Segurança
+- O content script de comunicação roda somente em https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app/.
+- O agente controla somente a aba explicitamente autorizada pelo popup.
+- A ponte valida a origem do site e o formato/tipo dos comandos.
+- Somente URLs HTTPS sem credenciais são aceitas.
+- Não lê cookies, senhas, códigos de autenticação ou dados de cartão.
+- O preenchimento não envia formulários; botões dentro de formulários, botões submit/reset e links javascript:, mailto: ou tel: são bloqueados.
+- Ações precisam ser solicitadas explicitamente no chat. Não há execução autônoma em segundo plano.
+- O Kill-Switch persiste como pausa e bloqueia novos comandos. Uma operação DOM síncrona que já tenha começado não pode ser revertida; esta versão não executa planos longos de múltiplas etapas.
+- O pareamento usa código aleatório de uso único com expiração de cinco minutos. O token não é enviado a um servidor.
 
-A extensão usa Manifest V3 e pede apenas:
-- `activeTab`: acesso temporário à aba ativa após clicar na extensão.
-- `scripting`: executar uma leitura simples do texto visível na aba ativa.
-- `clipboardWrite`: copiar o texto somente depois que você clicar no botão de cópia.
-
-Não há permissões amplas de todos os sites, cookies, histórico ou armazenamento. A extensão recusa URLs que não sejam HTTPS no host exato `saladofuturo.educacao.sp.gov.br`. Ela não lê campos de senha, não clica em respostas, não preenche campos nem envia/entrega atividades.
+Esta é uma primeira versão funcional de comandos assistidos, não um agente autônomo que decide e executa sequências sem novas instruções.

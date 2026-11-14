@@ -1,70 +1,189 @@
-import {isSalaDoFuturoUrl} from './policy.js';
+import {isSupportedPageUrl} from './policy.js';
+import {clickElementOnPage, fillFieldOnPage, historyActionOnPage, readPageOnPage} from './page-actions.js';
 
-const readButton = document.getElementById('read');
-const copyButton = document.getElementById('copy');
-const status = document.getElementById('status');
-const preview = document.getElementById('preview');
-
+const $ = id => document.getElementById(id);
+const status = $('status');
 let pageText = '';
+function report(message) { status.textContent = message; }
 
-function setStatus(message) {
-  status.textContent = message;
-}
-
-async function getActiveTab() {
-  const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+async function selectedTab() {
+  const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
   if (!tab?.id || !tab.url) throw new Error('Não consegui identificar a aba atual.');
-  if (!isSalaDoFuturoUrl(tab.url)) {
-    throw new Error('Abra primeiro https://saladofuturo.educacao.sp.gov.br/ e entre na sua conta.');
-  }
   return tab;
 }
 
-readButton.addEventListener('click', async () => {
-  readButton.disabled = true;
-  copyButton.disabled = true;
-  pageText = '';
-  preview.value = '';
-  setStatus('Lendo o texto visível da atividade…');
+async function activeTab() {
+  const tab = await selectedTab();
+  if (!isSupportedPageUrl(tab.url)) throw new Error('Por segurança, o NEX só atua em páginas HTTPS.');
+  return tab;
+}
 
+async function runOnPage(func, args = []) {
+  const tab = await activeTab();
+  const results = await chrome.scripting.executeScript({target:{tabId:tab.id},func,args});
+  return results?.[0]?.result;
+}
+
+async function navigateTo(url) {
+  const tab = await selectedTab();
+  await chrome.tabs.update(tab.id, {url});
+}
+
+$('googleSearch').addEventListener('click', async () => {
+  const query = $('googleQuery').value.trim();
+  if (!query) return report('Digite o que deseja pesquisar.');
   try {
-    const tab = await getActiveTab();
-    const [result] = await chrome.scripting.executeScript({
-      target: {tabId: tab.id},
-      func: () => ({
-        title: document.title || 'Sala do Futuro',
-        url: location.href,
-        text: document.body?.innerText || ''
-      })
-    });
-
-    const data = result?.result;
-    const extracted = String(data?.text || '').trim();
-    if (!extracted) throw new Error('Não encontrei texto visível. Aguarde a atividade carregar e tente novamente.');
-
-    pageText = [
-      data.title || 'Sala do Futuro',
-      data.url || tab.url,
-      '',
-      extracted.slice(0, 14000)
-    ].join('\n');
-
-    preview.value = pageText;
-    copyButton.disabled = false;
-    setStatus('Texto lido. Clique em “Copiar texto para o NEX”.');
-  } catch (error) {
-    setStatus(error?.message || 'Não foi possível ler esta página.');
-  } finally {
-    readButton.disabled = false;
-  }
+    await navigateTo('https://www.google.com/search?q=' + encodeURIComponent(query));
+    report('Pesquisa aberta no Google. Depois que carregar, abra novamente a extensão para ler os resultados.');
+  } catch(error) { report(error.message || 'Não foi possível pesquisar no Google.'); }
 });
 
-copyButton.addEventListener('click', async () => {
+$('navigate').addEventListener('click', async () => {
+  try {
+    let raw = $('url').value.trim();
+    if (!raw) throw new Error('Digite um endereço para abrir.');
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) raw = 'https://' + raw;
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Use um endereço HTTPS válido, sem usuário ou senha.');
+    await navigateTo(url.href);
+    report('Endereço aberto. Quando carregar, abra novamente a extensão para continuar.');
+  } catch(error) { report(error.message || 'Não foi possível abrir o endereço.'); }
+});
+
+for (const [id, action, label] of [
+  ['back','back','Voltando'],
+  ['forward','forward','Avançando'],
+  ['reload','reload','Recarregando']
+]) {
+  $(id).addEventListener('click', async () => {
+    try {
+      await runOnPage(historyActionOnPage, [action]);
+      report(label + ' a página. Abra novamente a extensão quando terminar.');
+    } catch(error) { report(error.message || 'Não foi possível navegar nesta página.'); }
+  });
+}
+
+$('read').addEventListener('click', async () => {
+  try {
+    report('Lendo o conteúdo visível…');
+    const data = await runOnPage(readPageOnPage);
+    const extracted = String(data?.text || '').trim();
+    if (!extracted) throw new Error('Não encontrei texto visível nesta página.');
+    pageText = [data.title || 'Página', data.url || '', '', extracted].join('\n');
+    $('preview').value = pageText;
+    $('copy').disabled = false;
+    report('Página lida. Você pode copiar o conteúdo para o NEX.');
+  } catch(error) { report(error.message || 'Falha ao ler a página.'); }
+});
+
+$('click').addEventListener('click', async () => {
+  const target = $('target').value.trim();
+  if (!target) return report('Digite o texto visível do botão ou link.');
+  try {
+    const result = await runOnPage(clickElementOnPage, [target]);
+    report(result?.message || 'A ação foi concluída.');
+  } catch(error) { report(error.message || 'Não foi possível clicar.'); }
+});
+
+$('type').addEventListener('click', async () => {
+  const label = $('field').value.trim();
+  const value = $('value').value;
+  if (!label) return report('Informe o nome, rótulo ou placeholder do campo.');
+  try {
+    const result = await runOnPage(fillFieldOnPage, [label, value]);
+    report(result?.message || 'A ação foi concluída.');
+  } catch(error) { report(error.message || 'Não foi possível preencher o campo.'); }
+});
+
+$('copy').addEventListener('click', async () => {
   if (!pageText) return;
   try {
     await navigator.clipboard.writeText(pageText);
-    setStatus('Copiado. Volte ao NEX, clique na conversa e cole com Ctrl+V.');
+    report('Texto copiado. Cole na conversa do NEX com Ctrl+V.');
   } catch {
-    setStatus('A cópia automática foi bloqueada. Selecione o texto e copie manualmente.');
+    report('Cópia bloqueada pelo navegador. Selecione o texto e copie manualmente.');
   }
 });
+
+$('clear').addEventListener('click', () => {
+  $('preview').value = '';
+  pageText = '';
+  $('copy').disabled = true;
+  report('Conteúdo limpo.');
+});
+
+
+// Controles da ponte NEX ↔ extensão.
+const agentStatus=document.getElementById('agentStatus');
+const pairingCodeInput=document.getElementById('pairingCode');
+const pairingCodeRow=document.getElementById('pairCodeRow');
+let activeTabInfo=null;
+
+async function popupAgentMessage(action,extra={}){
+  const response=await chrome.runtime.sendMessage({source:'nex-popup',action,...extra});
+  if(!response||!response.ok)throw new Error(response&&response.error||'Falha ao comunicar com o agente.');
+  return response.data;
+}
+function showAgentStatus(message){
+  if(!agentStatus)return;
+  const label=agentStatus.querySelector('span:last-child');
+  if(label)label.textContent=message;
+  else agentStatus.textContent=message;
+  const dot=agentStatus.querySelector('.status-dot');
+  if(dot)dot.classList.toggle('ready',/pareada\. ativa|pareamento conclu[ií]do|agente retomado|conectada e pronta/i.test(message));
+}
+async function loadAgentStatus(){
+  try{
+    const status=await popupAgentMessage('GET_STATUS');
+    showAgentStatus((status.authorized?'Aba autorizada: '+status.authorizedOrigin+'. ':'Nenhuma aba autorizada. ')+(status.paired?'Pareada. ':'Aguardando pareamento. ')+(status.paused?'Pausada.':'Ativa.'));
+    document.getElementById('createPairingCode').disabled=!status.authorized;
+  }catch(error){showAgentStatus(error.message);}
+}
+
+document.getElementById('authorizeAgentTab')?.addEventListener('click',async()=>{
+  try{
+    const tab=activeTabInfo;
+    if(!tab||!tab.id||!tab.url)throw new Error('Não consegui identificar a aba. Feche e abra o popup novamente.');
+    const current=new URL(tab.url);
+    if(current.protocol!=='https:'||current.username||current.password)throw new Error('Abra uma página HTTPS sem usuário ou senha na URL.');
+    const response=await popupAgentMessage('AUTHORIZE_TAB',{tabId:tab.id,expectedOrigin:current.origin});
+    showAgentStatus('Aba autorizada: '+response.authorizedOrigin+'. Agora gere um código.');
+    document.getElementById('createPairingCode').disabled=false;
+    await loadAgentStatus();
+  }catch(error){showAgentStatus(error.message);}
+});
+
+document.getElementById('createPairingCode')?.addEventListener('click',async()=>{
+  try{
+    const result=await popupAgentMessage('CREATE_PAIRING_CODE');
+    pairingCodeInput.value=result.code;
+    pairingCodeRow.hidden=false;
+    showAgentStatus('Código válido por 5 minutos. Cole-o na seção Agente de Navegador do site NEX.');
+  }catch(error){showAgentStatus(error.message);}
+});
+document.getElementById('copyPairingCode')?.addEventListener('click',async()=>{
+  try{await navigator.clipboard.writeText(pairingCodeInput.value);showAgentStatus('Código copiado. Cole-o no NEX.');}
+  catch{showAgentStatus('Não foi possível copiar. Selecione e copie o código manualmente.');}
+});
+document.getElementById('pauseAgent')?.addEventListener('click',async()=>{
+  try{const result=await popupAgentMessage('KILL_SWITCH');showAgentStatus(result.message||'Agente pausado. Novos comandos bloqueados.');}
+  catch(error){showAgentStatus(error.message);}
+});
+document.getElementById('resumeAgent')?.addEventListener('click',async()=>{
+  try{await popupAgentMessage('RESUME');showAgentStatus('Agente retomado manualmente.');}
+  catch(error){showAgentStatus(error.message);}
+});
+document.getElementById('disconnectAgent')?.addEventListener('click',async()=>{
+  try{
+    await popupAgentMessage('DISCONNECT');
+    pairingCodeRow.hidden=true;
+    pairingCodeInput.value='';
+    showAgentStatus('Pareamento e autorização removidos.');
+    document.getElementById('createPairingCode').disabled=true;
+  }catch(error){showAgentStatus(error.message);}
+});
+(async()=>{
+  try{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});activeTabInfo=tab||null;}
+  catch{activeTabInfo=null;}
+  await loadAgentStatus();
+})();

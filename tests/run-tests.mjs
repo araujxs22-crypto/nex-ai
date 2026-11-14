@@ -4,25 +4,237 @@ import {tmpdir} from 'node:os';
 import {join, dirname} from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {runInNewContext} from 'node:vm';
-import {NexCore, TinyMLP, NexMemory} from '../src/index.js';
+import {NexCore, TinyMLP, NexMemory, TextVectorizer} from '../src/index.js';
+import {LOCAL_MODEL, LOCAL_MODEL_OPTIONS, loadLocalLLM, generateLocalReply, isDegenerateAnswer} from '../src/local-llm.js';
 import {NexCodeEngine} from '../src/engines/code-engine.js';
 import {buildProjectPreview} from '../src/engines/project-preview.js';
 import {classificationMetrics, rejectionMetrics} from '../src/evaluation/metrics.js';
 import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
-import {isSalaDoFuturoUrl} from '../extension/sala-do-futuro/policy.js';
+import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';
+import {NEX_APP_ORIGIN, isNexAppOrigin, isSafeHttpsUrl, isSafePairingCode, validateBrowserCommand} from '../extension/sala-do-futuro/protocol.js';
+import {clickElementOnPage, fillFieldOnPage, hoverElementOnPage, selectOptionOnPage} from '../extension/sala-do-futuro/page-actions.js';
+import {parseNexBrowserCommand, parseNexBrowserPlan} from '../src/browser/command-parser.js';
+import {parseNexCodingCommand} from '../src/agent/coding-command-parser.js';
 
 
-assert.equal(isSalaDoFuturoUrl('https://saladofuturo.educacao.sp.gov.br/'), true);
-assert.equal(isSalaDoFuturoUrl('https://SALADOFUTURO.EDUCACAO.SP.GOV.BR/atividade'), true);
-assert.equal(isSalaDoFuturoUrl('http://saladofuturo.educacao.sp.gov.br/'), false);
-assert.equal(isSalaDoFuturoUrl('https://saladofuturo.educacao.sp.gov.br.evil.example/'), false);
-assert.equal(isSalaDoFuturoUrl('https://example.com/'), false);
-assert.equal(isSalaDoFuturoUrl('https://usuario:senha@saladofuturo.educacao.sp.gov.br/'), false);
+assert.equal(isSupportedPageUrl('https://saladofuturo.educacao.sp.gov.br/'), true);
+assert.equal(isSupportedPageUrl('https://SALADOFUTURO.EDUCACAO.SP.GOV.BR/atividade'), true);
+assert.equal(isSupportedPageUrl('http://saladofuturo.educacao.sp.gov.br/'), false);
+assert.equal(isSupportedPageUrl('https://saladofuturo.educacao.sp.gov.br.evil.example/'), true);
+assert.equal(isSupportedPageUrl('https://example.com/'), true);
+assert.equal(isSupportedPageUrl('https://usuario:senha@saladofuturo.educacao.sp.gov.br/'), false);
+
+assert.equal(NEX_APP_ORIGIN,'https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app');
+assert.equal(isNexAppOrigin('https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app/'),true);
+assert.equal(isNexAppOrigin('https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app.evil.example/'),false);
+assert.equal(isNexAppOrigin('http://nex-ai-preview.vercel.app/'),false);
+assert.equal(isSafeHttpsUrl('https://example.com/path'),true);
+assert.equal(isSafeHttpsUrl('http://example.com/'),false);
+assert.equal(isSafeHttpsUrl('javascript:alert(1)'),false);
+assert.equal(isSafeHttpsUrl('https://user:pass@example.com/'),false);
+assert.equal(isSafePairingCode('0123456789abcdef0123456789abcdef'),true);
+assert.equal(isSafePairingCode('short-code'),false);
+assert.deepEqual(validateBrowserCommand({type:'READ_PAGE'}),{ok:true,command:{type:'READ_PAGE'}});
+assert.deepEqual(validateBrowserCommand({type:'HOVER',target:'Tarefa 5'}),{ok:true,command:{type:'HOVER',target:'Tarefa 5'}});
+assert.equal(validateBrowserCommand({type:'HOVER',target:''}).ok,false);
+assert.deepEqual(validateBrowserCommand({type:'SELECT_OPTION',option:'Certo',question:'questão 2'}),{ok:true,command:{type:'SELECT_OPTION',option:'Certo',question:'questão 2'}});
+assert.equal(validateBrowserCommand({type:'SELECT_OPTION',option:''}).ok,false);
+assert.equal(validateBrowserCommand({type:'NAVIGATE',url:'http://example.com'}).ok,false);
+assert.equal(validateBrowserCommand({type:'NAVIGATE',url:'https://user:pass@example.com'}).ok,false);
+assert.equal(validateBrowserCommand({type:'FILL_FIELD',field:'senha',value:'x'}).ok,false);
+assert.equal(validateBrowserCommand({type:'FILL_FIELD',field:'Nome',value:'Kaue'}).ok,true);
+assert.equal(validateBrowserCommand({type:'RUN_SCRIPT',code:'alert(1)'}).ok,false);
+
+assert.deepEqual(parseNexBrowserCommand('ler página'), {type:'READ_PAGE'});
+assert.deepEqual(parseNexBrowserCommand('LEIA A PÁGINA'), {type:'READ_PAGE'});
+assert.deepEqual(
+  parseNexBrowserCommand('Use a extensão do navegador para ler o conteúdo visível da aba atual. Retorne todo o texto da página, sem tentar clicar, preencher ou enviar nada.'),
+  {type:'READ_PAGE'}
+);
+assert.deepEqual(parseNexBrowserCommand('NEX abrir https://example.com'), {type:'NAVIGATE',url:'https://example.com'});
+assert.deepEqual(parseNexBrowserCommand('clique em prosseguir para tarefa'), {type:'CLICK',target:'prosseguir para tarefa'});
+assert.deepEqual(parseNexBrowserCommand('clique no cartão da Tarefa 5'), {type:'CLICK',target:'cartão da Tarefa 5'});
+assert.deepEqual(parseNexBrowserCommand('passe o mouse sobre Tarefa 5'), {type:'HOVER',target:'Tarefa 5'});
+assert.deepEqual(parseNexBrowserCommand('passar mouse em Religião e poder na Idade Média'), {type:'HOVER',target:'Religião e poder na Idade Média'});
+assert.deepEqual(
+  parseNexBrowserCommand('Passe o mouse sobre o elemento que contém o texto "Tarefa 5". Procure na página inteira, inclusive dentro de cartões e elementos filhos. Role até ele se necessário. Não clique.'),
+  {type:'HOVER',target:'Tarefa 5'}
+);
+assert.deepEqual(parseNexBrowserCommand('marque Certo na questão 2'),{type:'SELECT_OPTION',option:'Certo',question:'questão 2'});
+assert.deepEqual(parseNexBrowserCommand('selecione A na questão 3'),{type:'SELECT_OPTION',option:'A',question:'questão 3'});
+assert.equal(parseNexBrowserCommand('Leia a página, pesquise o conteúdo e marque as respostas corretas.'),null,
+  'um pedido composto não deve ser interpretado como um simples comando de leitura');
+assert.equal(parseNexBrowserCommand('leia a página e clique em Enviar'), null,
+  'uma solicitação que mistura leitura com ações deve exigir um comando explícito separado');
+
+
+
+function mockBrowserElement({
+  tagName='INPUT', type='text', name='', id='', placeholder='', ariaLabel='',
+  autocomplete='', value='', text='', href='', labels=[], options=[], editable=false, cursor='default'
+}={}) {
+  let currentValue = value;
+  const events = [];
+  return {
+    tagName, type, name, id, placeholder, autocomplete, labels, options, cursor,
+    innerText:text, textContent:text, disabled:false, readOnly:false,
+    isContentEditable:editable, events, clickCount:0,
+    get value() { return currentValue; },
+    set value(next) { currentValue = String(next); },
+    getAttribute(attribute) {
+      if (attribute === 'aria-label') return ariaLabel;
+      if (attribute === 'autocomplete') return autocomplete;
+      if (attribute === 'href') return href;
+      if (attribute === 'contenteditable') return editable ? 'true' : null;
+      if (attribute === 'aria-disabled') return null;
+      return null;
+    },
+    getBoundingClientRect() { return {width:120,height:24,left:30,top:40,right:150,bottom:64}; },
+    scrollIntoView(options) { this.scrolledWith=options; },
+    focus() { this.focused = true; },
+    dispatchEvent(event) { events.push(event.type); return true; },
+    click() { this.clickCount += 1; }
+  };
+}
+const originalDocumentForBrowserTests = globalThis.document;
+const originalGetComputedStyleForBrowserTests = globalThis.getComputedStyle;
+let browserTestElements = [];
+globalThis.document = {querySelectorAll: () => browserTestElements};
+globalThis.getComputedStyle = element => ({cursor: element.cursor || 'default'});
+try {
+  const hoverCard = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
+  browserTestElements = [hoverCard];
+  const hoverResult = await hoverElementOnPage('Tarefa 5: Religião e poder na Idade Média');
+  assert.equal(hoverResult.ok, true, 'deve localizar cartão para hover');
+  assert.deepEqual(hoverCard.scrolledWith,{behavior:'auto',block:'center',inline:'nearest'});
+  assert.ok(hoverCard.events.includes('pointerover') && hoverCard.events.includes('mouseover'),
+    'deve enviar eventos pointer e mouse para handlers da página');
+  assert.match(hoverResult.note,/CSS :hover/);
+
+  const plainCard = mockBrowserElement({tagName:'DIV',text:'Tarefa 6: A crise do sistema feudal',cursor:'default'});
+  browserTestElements = [plainCard];
+  const plainHoverResult = await hoverElementOnPage('Tarefa 6');
+  assert.equal(plainHoverResult.ok,true,'deve localizar elementos de texto sem role ou cursor pointer');
+  assert.ok(plainCard.events.includes('mouseover'));
+
+  const taskCard = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
+  browserTestElements = [taskCard];
+  const taskCardResult = clickElementOnPage('Tarefa 5: Religião e poder na Idade Média');
+  assert.equal(taskCardResult.ok, true, 'deve reconhecer e clicar em cartão de tarefa com cursor clicável');
+  assert.equal(taskCard.clickCount, 1);
+
+  const cardContainer = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
+  const cardTitle = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
+  cardContainer.contains = element => element === cardTitle;
+  browserTestElements = [cardContainer,cardTitle];
+  const nestedCardResult = clickElementOnPage('Tarefa 5: Religião e poder na Idade Média');
+  assert.equal(nestedCardResult.ok, true, 'deve escolher o título dentro do cartão sem confundir o contêiner');
+  assert.equal(cardTitle.clickCount, 1);
+  assert.equal(cardContainer.clickCount, 0);
+
+  const searchInput = mockBrowserElement({name:'q',placeholder:'Pesquisar'});
+  browserTestElements = [searchInput];
+  const fillResult = fillFieldOnPage('Pesquisar', 'melhores jogos leves');
+  assert.equal(fillResult.ok, true, 'deve preencher um campo de texto visível');
+  assert.equal(searchInput.value, 'melhores jogos leves');
+  assert.ok(searchInput.events.includes('input') && searchInput.events.includes('change'), 'deve notificar eventos de entrada e alteração');
+
+  const select = mockBrowserElement({
+    tagName:'SELECT', type:'select-one', name:'category',
+    options:[
+      {label:'Tecnologia',textContent:'Tecnologia',value:'tech',disabled:false},
+      {label:'Esportes',textContent:'Esportes',value:'sports',disabled:false}
+    ]
+  });
+  browserTestElements = [select];
+  const selectResult = fillFieldOnPage('category', 'Esportes');
+  assert.equal(selectResult.ok, true, 'deve selecionar uma opção de lista suspensa');
+  assert.equal(select.value, 'sports');
+  assert.ok(select.events.includes('change'));
+
+  const correctChoice = mockBrowserElement({
+    tagName:'INPUT',type:'radio',name:'question2',
+    labels:[{innerText:'Certo',textContent:'Certo'}]
+  });
+  correctChoice.checked=false;
+  correctChoice.click=function(){this.checked=true;this.clickCount+=1;};
+  browserTestElements=[correctChoice];
+  const choiceResult=selectOptionOnPage('Certo');
+  assert.equal(choiceResult.ok,true,'deve selecionar uma opção radio pelo rótulo');
+  assert.equal(correctChoice.checked,true,'deve confirmar o estado selecionado');
+  assert.equal(correctChoice.clickCount,1);
+
+  const externalLabel={innerText:'Errado',textContent:'Errado',getBoundingClientRect:()=>({width:120,height:24,left:30,top:40,right:150,bottom:64})};
+  const visuallyHiddenChoice=mockBrowserElement({tagName:'INPUT',type:'radio',labels:[externalLabel]});
+  visuallyHiddenChoice.checked=false;
+  visuallyHiddenChoice.getBoundingClientRect=()=>({width:0,height:0,left:0,top:0,right:0,bottom:0});
+  visuallyHiddenChoice.click=function(){this.checked=true;this.clickCount+=1;};
+  browserTestElements=[visuallyHiddenChoice];
+  const hiddenChoiceResult=selectOptionOnPage('Errado');
+  assert.equal(hiddenChoiceResult.ok,true,'deve selecionar input oculto associado a label externa visível');
+  assert.equal(visuallyHiddenChoice.checked,true);
+
+  const duplicateChoiceA = mockBrowserElement({tagName:'INPUT',type:'radio',labels:[{innerText:'Certo',textContent:'Certo'}]});
+  const duplicateChoiceB = mockBrowserElement({tagName:'INPUT',type:'radio',labels:[{innerText:'Certo',textContent:'Certo'}]});
+  duplicateChoiceA.checked=false; duplicateChoiceB.checked=false;
+  browserTestElements=[duplicateChoiceA,duplicateChoiceB];
+  const ambiguousChoice=selectOptionOnPage('Certo');
+  assert.equal(ambiguousChoice.ok,false,'deve recusar opções duplicadas sem escopo');
+  assert.equal(duplicateChoiceA.clickCount+duplicateChoiceB.clickCount,0,'não deve escolher entre alternativas ambíguas');
+
+  const password = mockBrowserElement({type:'password',name:'password',placeholder:'Senha'});
+  const oneTimeCode = mockBrowserElement({type:'text',name:'otp',placeholder:'Código',autocomplete:'one-time-code'});
+  browserTestElements = [password, oneTimeCode];
+  assert.equal(fillFieldOnPage('Senha', '123456').ok, false, 'não deve preencher campos de senha');
+  assert.equal(fillFieldOnPage('Código', '123456').ok, false, 'não deve preencher campos de código de verificação');
+
+  const firstName = mockBrowserElement({name:'first',placeholder:'Nome'});
+  const secondName = mockBrowserElement({name:'last',placeholder:'Nome'});
+  browserTestElements = [firstName, secondName];
+  assert.equal(fillFieldOnPage('Nome', 'Kaue').ok, false, 'deve evitar escolher um campo ambíguo');
+
+  const submitButton = mockBrowserElement({tagName:'BUTTON',type:'submit',text:'Enviar'});
+  const safeLink = mockBrowserElement({tagName:'A',text:'Abrir documentação',href:'/docs'});
+  browserTestElements = [submitButton, safeLink];
+  const clickResult = clickElementOnPage('Abrir documentação');
+  assert.equal(clickResult.ok, true, 'deve clicar em um link visível com correspondência exata');
+  assert.equal(safeLink.clickCount, 1);
+  assert.equal(submitButton.clickCount, 0, 'nunca deve acionar botões de envio');
+  const purchaseButton = mockBrowserElement({tagName:'BUTTON',type:'button',text:'Comprar agora'});
+  browserTestElements = [purchaseButton];
+  assert.equal(clickElementOnPage('Comprar agora').ok, false, 'deve bloquear ações de compra');
+  assert.equal(purchaseButton.clickCount, 0, 'não deve acionar o botão de compra');
+
+  const namedPassword = mockBrowserElement({type:'text',name:'user_password',placeholder:'Senha'});
+  browserTestElements = [namedPassword];
+  assert.equal(fillFieldOnPage('Senha', 'abc123').ok, false, 'deve bloquear campos sensíveis mesmo quando não são input[type=password]');
+
+
+  browserTestElements = [safeLink, mockBrowserElement({tagName:'A',text:'Abrir documentação avançada',href:'/advanced'})];
+  assert.equal(clickElementOnPage('Abrir').ok, false, 'deve pedir texto específico quando a busca parcial é ambígua');
+} finally {
+  if (originalDocumentForBrowserTests === undefined) delete globalThis.document;
+  else globalThis.document = originalDocumentForBrowserTests;
+  if (originalGetComputedStyleForBrowserTests === undefined) delete globalThis.getComputedStyle;
+  else globalThis.getComputedStyle = originalGetComputedStyleForBrowserTests;
+}
+
 const salaExtensionManifest = JSON.parse(readFileSync(new URL('../extension/sala-do-futuro/manifest.json', import.meta.url), 'utf8'));
 assert.equal(salaExtensionManifest.manifest_version, 3);
-assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', 'clipboardWrite']);
-assert.equal(salaExtensionManifest.host_permissions, undefined);
+assert.equal(salaExtensionManifest.version, '1.5.0');
+assert.ok(salaExtensionManifest.host_permissions.includes('http://127.0.0.1:4177/*'));
+assert.deepEqual(salaExtensionManifest.permissions, ['activeTab', 'scripting', 'storage', 'clipboardWrite']);
+assert.equal(salaExtensionManifest.background.service_worker, 'background.js');
+assert.equal(salaExtensionManifest.background.type, 'module');
+assert.equal(salaExtensionManifest.content_scripts[0].matches[0], 'https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app/*');
+assert.deepEqual(salaExtensionManifest.host_permissions, ['http://127.0.0.1:4177/*']);
+const browserBackgroundSource = readFileSync(new URL('../extension/sala-do-futuro/background.js', import.meta.url), 'utf8');
+assert.match(browserBackgroundSource, /case 'COMMAND': return queueCommand\(message\.payload\);/,
+  'o bridge deve encaminhar o envelope do comando sem embrulhá-lo duas vezes');
+assert.doesNotMatch(browserBackgroundSource, /case 'COMMAND': return \{ok:true,data:await queueCommand/,
+  'o bridge não deve criar uma resposta aninhada');
+
 
 const codeEngine = new NexCodeEngine();
 
@@ -211,6 +423,28 @@ try {
 
 assert.equal(codeEngine.testPlan('javascript').executionSupported, false);
 assert.throws(() => codeEngine.analyze('x', 'ruby'), /Linguagem não suportada/);
+
+assert.equal(LOCAL_MODEL.id, 'onnx-community/SmolLM2-135M-Instruct-ONNX');
+assert.equal(LOCAL_MODEL.dtype, 'q4');
+assert.equal(LOCAL_MODEL.device, 'WASM CPU');
+assert.equal(LOCAL_MODEL_OPTIONS.length, 2);
+assert.equal(LOCAL_MODEL_OPTIONS[1].id, 'onnx-community/Qwen3-0.6B-ONNX');
+assert.equal(typeof loadLocalLLM, 'function');
+assert.equal(typeof generateLocalReply, 'function');
+
+const vectorizerFixture = TextVectorizer.fromExamples([
+  {label:'code',text:'criar site'},
+  {label:'code',text:'criar aplicação'},
+  {label:'video',text:'renderizar cena'}
+]).vectorizer;
+assert.ok(vectorizerFixture.vocab.some(feature => feature === 'b:criar_site'),
+  'o vetorizador deve preservar pares de palavras');
+assert.ok(vectorizerFixture.idf.every(value => Number.isFinite(value) && value > 0),
+  'IDF deve conter pesos finitos e positivos');
+const phraseVector = vectorizerFixture.encode('criar site');
+assert.ok(Math.abs(Math.sqrt(phraseVector.reduce((sum,value)=>sum+value*value,0))-1)<1e-9,
+  'features devem ser normalizadas por norma L2');
+assert.equal(vectorizerFixture.recognizedRatio('criar site'),1);
 
 const core = new NexCore();
 const before = JSON.stringify(core.chat.model.toJSON());
@@ -530,7 +764,7 @@ const integratedSite = readFileSync(new URL('../index.html', import.meta.url), '
 assert.ok(integratedSite.includes("import { NexCore } from './src/index.js'"), 'site importa o Core');
 assert.ok(integratedSite.includes('window.nexCore = core'), 'site expõe a instância do Core');
 assert.ok(integratedSite.includes('window.nexReady'), 'site aguarda a inicialização');
-assert.ok(integratedSite.includes('NEX CORE 0.5.0'), 'site identifica a versão integrada');
+assert.ok(integratedSite.includes('NEX CORE 0.6.0'), 'site identifica a versão integrada');
 assert.ok(integratedSite.includes('id="nex-core-status"'), 'site exibe estado do Core');
 
 
@@ -686,3 +920,42 @@ console.log(JSON.stringify({
   ],
   filesPreserved: ['src/engines/video-engine.js', 'src/engines/code-engine.js']
 }, null, 2));
+
+
+const browserPlanFixture=parseNexBrowserPlan('ler página; clicar em Pesquisar; preencher campo Nome com Kaue');
+assert.equal(browserPlanFixture.length,3,'o planejador deve dividir comandos explícitos em etapas');
+assert.equal(browserPlanFixture[0].type,'READ_PAGE');
+assert.equal(browserPlanFixture[1].type,'CLICK');
+assert.equal(browserPlanFixture[2].type,'FILL_FIELD');
+assert.equal(parseNexBrowserPlan('ler página; texto sem comando'),null,'planos incompletos devem ser rejeitados');
+assert.deepEqual(parseNexCodingCommand('listar arquivos'),{type:'list',path:'.'});
+assert.deepEqual(parseNexCodingCommand('mostrar arquivos da pasta src'),{type:'list',path:'src'});
+assert.deepEqual(parseNexCodingCommand('quais arquivos existem em src'),{type:'list',path:'src'});
+assert.deepEqual(parseNexCodingCommand('leia o arquivo "src/App.js"'),{type:'read',path:'src/App.js'});
+assert.deepEqual(parseNexCodingCommand('crie arquivo notas.txt contendo: primeira linha\\nsegunda linha'),{type:'create',path:'notas.txt',content:'primeira linha\\nsegunda linha'});
+assert.deepEqual(parseNexCodingCommand('atualize arquivo src/app.js para: export default 1;'),{type:'write',path:'src/app.js',content:'export default 1;'});
+assert.deepEqual(parseNexCodingCommand('teste npm run build'),{type:'run',command:'npm run build'});
+assert.deepEqual(parseNexCodingCommand('ler arquivo src/app.js'),{type:'read',path:'src/app.js'});
+assert.deepEqual(parseNexCodingCommand('executar npm test'),{type:'run',command:'npm test'});
+assert.equal(parseNexCodingCommand('criar arquivo notas.txt com conteúdo: olá').content,'olá');
+assert.equal(parseNexCodingCommand('executar rm -rf .'),null,'comandos fora da lista permitida devem ser rejeitados');
+assert.equal(isDegenerateAnswer('a sua formina, a sua formina, a sua formina, a sua formina, a sua formina'),false,'respostas curtas não devem ser bloqueadas');
+assert.equal(isDegenerateAnswer('a sua formina a sua formina a sua formina a sua formina a sua formina a sua formina a sua formina'),true,'loops de palavras devem ser rejeitados');
+const localAgentSource=readFileSync(new URL('../local-agent/server.mjs',import.meta.url),'utf8');
+assert.ok(localAgentSource.includes("const HOST = '127.0.0.1'"),'o agente local deve escutar apenas no loopback');
+assert.ok(localAgentSource.includes("timingSafeEqual"),'o agente local deve comparar tokens em tempo constante');
+assert.ok(localAgentSource.includes("'/api/commands/run'"),'o agente local deve oferecer execução controlada de comandos');
+assert.ok(localAgentSource.includes('Use caminhos relativos dentro da pasta de trabalho.'),'o agente local deve restringir caminhos ao workspace');
+assert.ok(integratedSite.includes('id="nex-activity"'),'a interface deve ter o indicador compacto de atividade');
+assert.ok(integratedSite.includes('Navegador · etapa'),'planos devem exibir a etapa ativa');
+assert.ok(integratedSite.includes('nex-local-agent-connect'),'o site deve expor conexão ao agente local');
+
+
+const extensionUpdater=readFileSync(new URL('../tools/update-nex-extension.ps1',import.meta.url),'utf8');
+assert.ok(extensionUpdater.includes('FolderBrowserDialog'),'o atualizador deve solicitar a pasta local da extensao');
+assert.ok(extensionUpdater.includes("version -ne '1.5.0'"),'o atualizador deve validar a versao esperada');
+assert.ok(extensionUpdater.includes('chrome://extensions'),'o atualizador deve orientar a recarregar a extensao');
+assert.ok(extensionUpdater.includes("'NEX-Agent'"),'o atualizador deve instalar o agente de programacao local');
+assert.ok(extensionUpdater.includes("'start-nex-agent.bat'"),'o atualizador deve instalar o launcher do agente local');
+assert.ok(integratedSite.includes('tools/update-nex-extension.ps1'),'a tela de instalacao deve explicar a atualizacao sem ZIP manual');
+assert.ok(integratedSite.includes('CODE AGENT · BROWSER AGENT'),'o produto deve destacar os dois agentes principais');

@@ -58,14 +58,17 @@ export class NexCore {
   get status() {
     return {
       name: 'NEX Core',
-      version: '0.5.0',
-      offline: true,
+      version: '0.6.0',
+      offlineInference: true,
+      initialModelDownloadRequiresInternet: true,
+      paidInferenceRequired: false,
       trainableNetwork: true,
       intentRejection: true,
       validationSplit: true,
       videoPlanningPreserved: true,
       codeAnalysisPreserved: true,
-      generalKnowledge: 'limited/local'
+      generalKnowledge: 'local-llm-optional',
+      localLanguageModel: 'browser-on-device'
     };
   }
 }
