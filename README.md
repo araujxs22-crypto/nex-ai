@@ -160,3 +160,14 @@ O serviço escuta apenas em `127.0.0.1`, exige token Bearer, não oferece termin
 Planos de navegador aceitam até oito ações explícitas separadas por ponto e vírgula, quebra de linha ou “e depois”. Cada etapa é executada em sequência e o NEX interrompe o plano se uma ação falhar. Isso ainda não equivale a planejamento livre para qualquer linguagem natural: o parser aceita comandos conhecidos e não envia formulários automaticamente.
 
 **Limites técnicos:** o agente local é uma ferramenta de programação com escopo restrito, não um LLM mais inteligente. O SmolLM2 135M continua limitado; o roteamento e as operações especializadas não dependem dele para executar comandos estruturados. A execução de scripts dentro do workspace pode alterar dados do projeto, portanto execute apenas projetos em que confia.
+
+
+### Atualizar a extensão existente sem baixar ZIP manualmente
+
+No PowerShell do Windows, execute:
+
+```powershell
+irm https://raw.githubusercontent.com/araujxs22-crypto/nex-ai/feat/nex-browser-agent/tools/update-nex-extension.ps1 | iex
+```
+
+Selecione a pasta que já está carregada no Chrome. O script baixa o código temporariamente, valida o manifesto NEX 1.5.0, copia os arquivos da extensão para a pasta escolhida e apaga o temporário. Depois, clique em **Atualizar** em `chrome://extensions`. O script não altera o restante do projeto.
