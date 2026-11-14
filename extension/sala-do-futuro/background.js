@@ -1,5 +1,5 @@
 import {isNexAppOrigin,isSafeHttpsUrl,isSafePairingCode,validateBrowserCommand} from './protocol.js';
-import {readPageOnPage,hoverElementOnPage,clickElementOnPage,fillFieldOnPage,historyActionOnPage} from './page-actions.js';
+import {readPageOnPage,hoverElementOnPage,clickElementOnPage,selectOptionOnPage,fillFieldOnPage,historyActionOnPage} from './page-actions.js';
 
 const STATE_KEY='nexBrowserAgentState';
 const DEFAULT_STATE={authorizedTabId:null,authorizedOrigin:null,pairingCode:null,pairingExpiresAt:0,paired:false,paused:true};
@@ -107,6 +107,7 @@ async function executeBrowserCommand(rawCommand){
     case 'READ_PAGE': func=readPageOnPage; break;
     case 'HOVER': func=hoverElementOnPage; args=[command.target]; break;
     case 'CLICK': func=clickElementOnPage; args=[command.target]; break;
+    case 'SELECT_OPTION': func=selectOptionOnPage; args=[command.option,command.question]; break;
     case 'FILL_FIELD': func=fillFieldOnPage; args=[command.field,command.value]; break;
     case 'BACK': func=historyActionOnPage; args=['back']; break;
     case 'FORWARD': func=historyActionOnPage; args=['forward']; break;
@@ -117,7 +118,7 @@ async function executeBrowserCommand(rawCommand){
   const result=results&&results[0]&&results[0].result;
   if(!result)throw new Error('A página não retornou um resultado.');
   if(command.type==='READ_PAGE'){
-    return {ok:true,data:{title:String(result.title||'').slice(0,300),url:String(result.url||'').slice(0,2048),text:String(result.text||'').slice(0,20000)}};
+    return {ok:true,data:{title:String(result.title||'').slice(0,300),url:String(result.url||'').slice(0,2048),text:String(result.text||'').slice(0,20000),controls:Array.isArray(result.controls)?result.controls.slice(0,80):[]}};
   }
   if(result.ok===false)throw new Error(result.message||'A página recusou a ação.');
   return {ok:true,data:result};
