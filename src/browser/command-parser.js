@@ -32,7 +32,7 @@ export function parseNexBrowserCommand(value) {
   const asksToReadPage =
     /\b(?:ler|leia|leitura)\b/.test(requestedText) &&
     /\b(?:pagina|aba|conteudo|texto)\b/.test(requestedText) &&
-    !/\b(?:clicar|preencher|enviar|submeter|navegar|abrir|marcar|selecionar)\b/.test(requestedText);
+    !/\b(?:clicar|clique|preencher|preencha|enviar|submeter|navegar|abrir|marcar|marque|assinalar|assinale|selecionar|selecione|escolher|escolha|pesquisar|pesquise|buscar|busque)\b/.test(requestedText);
   if (asksToReadPage || /^(?:nex )?(?:ler|leia) (?:a )?pagina$/.test(normalized)) {
     return {type:'READ_PAGE'};
   }
