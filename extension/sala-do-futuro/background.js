@@ -97,9 +97,9 @@ async function executeBrowserCommand(rawCommand){
       state.authorizedOrigin=null;
       state.paused=true;
       await saveState(state);
-      return {ok:true,message:'Navegação iniciada. Para controlar o novo site, abra a extensão nessa aba e autorize-a novamente.'};
+      return {ok:true,data:{message:'Navegação iniciada. Para controlar o novo site, abra a extensão nessa aba e autorize-a novamente.'}};
     }
-    return {ok:true,message:'Navegação iniciada na aba autorizada.'};
+    return {ok:true,data:{message:'Navegação iniciada na aba autorizada.'}};
   }
 
   let func,args=[];
@@ -184,7 +184,8 @@ async function handleBridgeMessage(message){
       await saveState(state);
       return {ok:true,data:statusFrom(state)};
     }
-    case 'COMMAND': return {ok:true,data:await queueCommand(message.payload)};
+    // queueCommand already returns the {ok, data} response envelope expected by the bridge.
+    case 'COMMAND': return queueCommand(message.payload);
     default: throw new Error('Mensagem não permitida.');
   }
 }
