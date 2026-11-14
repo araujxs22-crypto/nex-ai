@@ -59,7 +59,9 @@ export class NexCore {
     return {
       name: 'NEX Core',
       version: '0.6.0',
-      offline: true,
+      offlineInference: true,
+      initialModelDownloadRequiresInternet: true,
+      paidInferenceRequired: false,
       trainableNetwork: true,
       intentRejection: true,
       validationSplit: true,
