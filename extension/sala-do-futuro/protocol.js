@@ -38,6 +38,14 @@ export function validateBrowserCommand(input) {
       if (!target || target.length > 200) return {ok:false,error:'Informe o texto do cartão ou elemento (até 200 caracteres).'};
       return {ok:true,command:{type:'HOVER',target}};
     }
+    case 'SELECT_OPTION': {
+      const option = typeof input.option === 'string' ? input.option.trim() : '';
+      const question = typeof input.question === 'string' ? input.question.trim() : '';
+      if (!option || option.length > 160 || question.length > 80) {
+        return {ok:false,error:'Informe a opção e, quando necessário, a questão (limites: 160 e 80 caracteres).'};
+      }
+      return {ok:true,command:{type:'SELECT_OPTION',option,question}};
+    }
     case 'FILL_FIELD': {
       const field = typeof input.field === 'string' ? input.field.trim() : '';
       const value = typeof input.value === 'string' ? input.value : '';
