@@ -29,6 +29,10 @@ export function parseNexBrowserCommand(value) {
   if ((match = /^(?:nex )?(?:abrir|navegar(?: para)?) (https:\/\/\S+)$/i.exec(text))) {
     return {type:'NAVIGATE',url:match[1]};
   }
+  if ((match = /^(?:nex )?(?:passar|passe|posicionar|colocar) (?:o )?mouse (?:em|sobre|no|na) (.+)$/i.exec(text)) ||
+      (match = /^(?:nex )?hover (?:em|sobre) (.+)$/i.exec(text))) {
+    return {type:'HOVER',target:match[1].replace(/^["']|["']$/g,'').trim()};
+  }
   if ((match = /^(?:nex )?(?:clicar|clique) (?:em|no|na) (.+)$/i.exec(text))) {
     return {type:'CLICK',target:match[1].replace(/^["']|["']$/g,'').trim()};
   }
