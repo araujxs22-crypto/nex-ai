@@ -12,7 +12,7 @@ import {leakageReport} from '../src/evaluation/leakage.js';
 import {TRAIN_EXAMPLES, VALIDATION_EXAMPLES, TEST_EXAMPLES, UNKNOWN_EXAMPLES, UNKNOWN_CALIBRATION_EXAMPLES} from '../data/training-data.js';
 import {isSupportedPageUrl} from '../extension/sala-do-futuro/policy.js';
 import {NEX_APP_ORIGIN, isNexAppOrigin, isSafeHttpsUrl, isSafePairingCode, validateBrowserCommand} from '../extension/sala-do-futuro/protocol.js';
-import {clickElementOnPage, fillFieldOnPage, hoverElementOnPage} from '../extension/sala-do-futuro/page-actions.js';
+import {clickElementOnPage, fillFieldOnPage, hoverElementOnPage, selectOptionOnPage} from '../extension/sala-do-futuro/page-actions.js';
 import {parseNexBrowserCommand} from '../src/browser/command-parser.js';
 
 
@@ -36,6 +36,8 @@ assert.equal(isSafePairingCode('short-code'),false);
 assert.deepEqual(validateBrowserCommand({type:'READ_PAGE'}),{ok:true,command:{type:'READ_PAGE'}});
 assert.deepEqual(validateBrowserCommand({type:'HOVER',target:'Tarefa 5'}),{ok:true,command:{type:'HOVER',target:'Tarefa 5'}});
 assert.equal(validateBrowserCommand({type:'HOVER',target:''}).ok,false);
+assert.deepEqual(validateBrowserCommand({type:'SELECT_OPTION',option:'Certo',question:'questão 2'}),{ok:true,command:{type:'SELECT_OPTION',option:'Certo',question:'questão 2'}});
+assert.equal(validateBrowserCommand({type:'SELECT_OPTION',option:''}).ok,false);
 assert.equal(validateBrowserCommand({type:'NAVIGATE',url:'http://example.com'}).ok,false);
 assert.equal(validateBrowserCommand({type:'NAVIGATE',url:'https://user:pass@example.com'}).ok,false);
 assert.equal(validateBrowserCommand({type:'FILL_FIELD',field:'senha',value:'x'}).ok,false);
@@ -53,6 +55,14 @@ assert.deepEqual(parseNexBrowserCommand('clique em prosseguir para tarefa'), {ty
 assert.deepEqual(parseNexBrowserCommand('clique no cartão da Tarefa 5'), {type:'CLICK',target:'cartão da Tarefa 5'});
 assert.deepEqual(parseNexBrowserCommand('passe o mouse sobre Tarefa 5'), {type:'HOVER',target:'Tarefa 5'});
 assert.deepEqual(parseNexBrowserCommand('passar mouse em Religião e poder na Idade Média'), {type:'HOVER',target:'Religião e poder na Idade Média'});
+assert.deepEqual(
+  parseNexBrowserCommand('Passe o mouse sobre o elemento que contém o texto "Tarefa 5". Procure na página inteira, inclusive dentro de cartões e elementos filhos. Role até ele se necessário. Não clique.'),
+  {type:'HOVER',target:'Tarefa 5'}
+);
+assert.deepEqual(parseNexBrowserCommand('marque Certo na questão 2'),{type:'SELECT_OPTION',option:'Certo',question:'questão 2'});
+assert.deepEqual(parseNexBrowserCommand('selecione A na questão 3'),{type:'SELECT_OPTION',option:'A',question:'questão 3'});
+assert.equal(parseNexBrowserCommand('Leia a página, pesquise o conteúdo e marque as respostas corretas.'),null,
+  'um pedido composto não deve ser interpretado como um simples comando de leitura');
 assert.equal(parseNexBrowserCommand('leia a página e clique em Enviar'), null,
   'uma solicitação que mistura leitura com ações deve exigir um comando explícito separado');
 
@@ -99,6 +109,12 @@ try {
   assert.ok(hoverCard.events.includes('pointerover') && hoverCard.events.includes('mouseover'),
     'deve enviar eventos pointer e mouse para handlers da página');
   assert.match(hoverResult.note,/CSS :hover/);
+
+  const plainCard = mockBrowserElement({tagName:'DIV',text:'Tarefa 6: A crise do sistema feudal',cursor:'default'});
+  browserTestElements = [plainCard];
+  const plainHoverResult = await hoverElementOnPage('Tarefa 6');
+  assert.equal(plainHoverResult.ok,true,'deve localizar elementos de texto sem role ou cursor pointer');
+  assert.ok(plainCard.events.includes('mouseover'));
 
   const taskCard = mockBrowserElement({tagName:'DIV',text:'Tarefa 5: Religião e poder na Idade Média',cursor:'pointer'});
   browserTestElements = [taskCard];
