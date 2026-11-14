@@ -1,4 +1,4 @@
-export const NEX_APP_ORIGIN = 'https://nex-ai-preview.vercel.app';
+export const NEX_APP_ORIGIN = 'https://nex-ai-preview-git-feat-nex-browser-agent-araujxs22-8685.vercel.app';
 
 export function isNexAppOrigin(value) {
   try { return new URL(value).origin === NEX_APP_ORIGIN; }
