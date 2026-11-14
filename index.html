@@ -225,7 +225,7 @@ async function sendMsg(){
   }
   if(response.type==='video-plan'){$('scene-prompt').value=text;window.nexLastVideoPlan=response.result;}
  }catch(e){answer='Erro no NEX Core: '+e.message}
- const messageNode=appendMessage(answer,'nex','NEX CORE 0.5.0');
+ const messageNode=appendMessage(answer,'nex','NEX CORE 0.6.0');
  if(response?.type==='code'&&response.result?.type==='scaffold')appendProjectActions(messageNode,response.result);
  speakReply(answer);
  await saveConversation(text,answer);
