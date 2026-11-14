@@ -268,9 +268,13 @@ async function sendMsg(){
  }
  let answer,response=null;
  try{
+  setActivity('Analisando sua solicitação…');
   await window.nexReady;
   const fenced=text.includes(String.fromCharCode(96).repeat(3));
   response=fenced?{type:'code',result:window.nexCore.code.process(text)}:window.nexCore.ask(text);
+  if(response?.type==='code')setActivity('Analisando código e procurando problemas…');
+  else if(response?.type==='video-plan')setActivity('Planejando a cena 3D…');
+  else if(response?.type==='memory'||response?.type==='memory-search')setActivity('Consultando a memória do NEX…');
   const useLocalLLM=response?.type==='clarification'||(response?.type==='chat'&&Boolean(response.classification));
   if(useLocalLLM&&window.generateNexLocalReply){
    try{
@@ -283,6 +287,7 @@ async function sendMsg(){
      if(status&&event?.message){
       status.textContent='LLM LOCAL · '+String(event.message).slice(0,54);
       status.title=String(event.message);
+      setActivity(event.message);
      }
     });
    }catch(llmError){
@@ -296,6 +301,15 @@ async function sendMsg(){
   }
   if(response.type==='video-plan'){$('scene-prompt').value=text;window.nexLastVideoPlan=response.result;}
  }catch(e){answer='Erro no NEX Core: '+e.message}
+ finally{setActivity('');}
+ if(response?.type==='code'&&response.result?.type==='scaffold'&&window.nexCodingAgent){
+  setActivity('Gravando os arquivos do projeto no workspace…');
+  try{
+   const saved=await window.nexCodingAgent.saveScaffold(response.result);
+   answer+='\\n\\nArquivos gravados no workspace: '+saved.created.join(', ');
+  }catch(error){answer+='\\n\\nProjeto preparado, mas não gravado no Windows: '+error.message+'\\nConecte o Agente de Programação Local na página do Agente de Navegador.';}
+  finally{setActivity('');}
+ }
  const messageNode=appendMessage(answer,'nex','NEX CORE 0.6.0');
  if(response?.type==='code'&&response.result?.type==='scaffold')appendProjectActions(messageNode,response.result);
  speakReply(answer);
@@ -404,7 +418,7 @@ function speakReply(text){
 inputAutoResize();function inputAutoResize(){$('msg').addEventListener('input',e=>{e.target.style.height='32px';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px'})}
 function makeSearchCard(item,index){const card=document.createElement('article');card.className='search-card';const title=document.createElement('h3');title.className='search-card-title';title.textContent=item.title;const snippet=document.createElement('p');snippet.className='search-card-snippet';snippet.textContent=item.snippet;const actions=document.createElement('div');actions.className='search-card-actions';const link=document.createElement('a');link.className='search-card-url';link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Ver artigo fonte ↗';const button=document.createElement('button');button.className='topbtn primary';button.textContent='📖 Estudar e salvar';button.onclick=()=>studyArticle(item,button);actions.append(link,button);card.append(title,snippet,actions);return card}
 async function performDeepResearch(query,userText){try{if(!query){appendMessage('Digite um assunto depois de “pesquisar:”.','nex');return}const url='https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&format=json&origin=*&srlimit=5';const res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();const hits=data.query?.search||[];if(!hits.length){const msg='Não encontrei artigos para “'+query+'”. Tente termos mais específicos.';appendMessage(msg,'nex');await saveConversation(userText,msg);return}lastResearchResults=[];for(const hit of hits.slice(0,5)){const pageUrl='https://pt.wikipedia.org/?curid='+hit.pageid;lastResearchResults.push({title:hit.title,pageId:hit.pageid,url:pageUrl,snippet:hit.snippet.replace(/<[^>]*>/g,'')})}const intro='Encontrei '+lastResearchResults.length+' artigos. Cada botão “Estudar e salvar” busca o texto disponível da página e guarda na memória local.';appendMessage(intro,'nex','RESULTADOS DA PESQUISA');const cards=document.createElement('div');cards.className='search-results-list';lastResearchResults.forEach((item,i)=>cards.appendChild(makeSearchCard(item,i)));$('chat-stream').appendChild(cards);$('chat-scroll').scrollTop=$('chat-scroll').scrollHeight;await saveConversation(userText,intro+' Resultados: '+lastResearchResults.map(x=>x.title+' — '+x.url).join('; '))}catch(e){console.error(e);const msg='Não consegui pesquisar agora. Verifique a internet e tente novamente. ('+e.message+')';appendMessage(msg,'nex');await saveConversation(userText,msg)}}
-async function studyArticle(article,button){button.disabled=true;button.textContent='Estudando…';try{const detail='https://pt.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=plain&pageids='+article.pageId+'&format=json&origin=*';const res=await fetch(detail);if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();const page=data.query?.pages?.[article.pageId];const content=page?.extract||'';if(!content.trim())throw new Error('A página não retornou texto extraível');const saved=await saveKnowledge(article.title,article.url,content,'Wikipédia');button.textContent=saved?'✓ Salvo na memória':'✓ Já estava salvo';button.style.background='#287a58';appendMessage(saved?'Estudei e guardei “'+article.title+'” na Biblioteca.':'“'+article.title+'” já estava na Biblioteca.','nex','MEMÓRIA')}catch(e){console.error(e);button.disabled=false;button.textContent='Tentar novamente';toast('Falha ao estudar: '+e.message)}}
+async function studyArticle(article,button){button.disabled=true;button.textContent='Estudando…';setActivity('Lendo e salvando o artigo “'+article.title+'”…');try{const detail='https://pt.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=plain&pageids='+article.pageId+'&format=json&origin=*';const res=await fetch(detail);if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();const page=data.query?.pages?.[article.pageId];const content=page?.extract||'';if(!content.trim())throw new Error('A página não retornou texto extraível');const saved=await saveKnowledge(article.title,article.url,content,'Wikipédia');button.textContent=saved?'✓ Salvo na memória':'✓ Já estava salvo';button.style.background='#287a58';appendMessage(saved?'Estudei e guardei “'+article.title+'” na Biblioteca.':'“'+article.title+'” já estava na Biblioteca.','nex','MEMÓRIA')}catch(e){console.error(e);button.disabled=false;button.textContent='Tentar novamente';toast('Falha ao estudar: '+e.message)}finally{setActivity('')}}
 async function saveKnowledge(title,url,content,source='') {if(!db)throw new Error('Banco de memória ainda não está pronto');const all=await reqPromise(db.transaction('knowledge','readonly').objectStore('knowledge').getAll());const key=normalizeText(title);const exists=all.some(k=>normalizeText(k.title)===key||(url&&k.url===url));if(exists)return false;const tx=db.transaction('knowledge','readwrite');tx.objectStore('knowledge').add({title,url,content,source,date:new Date().toISOString()});await txDone(tx);await loadLibrary();return true}
 async function loadLibrary(){if(!db)return;const items=await reqPromise(db.transaction('knowledge','readonly').objectStore('knowledge').getAll());renderLibrary(items)}
 function renderLibrary(items){const container=$('lib-cards-container');container.replaceChildren();if(!items.length){const e=document.createElement('div');e.className='empty';e.textContent='Nenhum conhecimento salvo ainda. Use “pesquisar: assunto” para estudar materiais.';container.appendChild(e);return}items.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).forEach(item=>{const card=document.createElement('article');card.className='library-card';const head=document.createElement('div');head.className='library-card-head';const title=document.createElement('h3');title.textContent='📚 '+item.title;const del=document.createElement('button');del.className='btn-del';del.textContent='Excluir';del.onclick=()=>deleteKnowledge(item.id);head.append(title,del);const p=document.createElement('p');p.textContent=(item.content||'').slice(0,420)+((item.content||'').length>420?'…':'');const meta=document.createElement('div');meta.className='meta';const source=document.createElement('span');source.textContent='Fonte: '+(item.source||'material local');meta.appendChild(source);if(validHttpUrl(item.url)){const a=document.createElement('a');a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Abrir fonte ↗';meta.appendChild(a)}const date=document.createElement('span');date.textContent='Salvo: '+formatDate(item.date);meta.appendChild(date);card.append(head,p,meta);container.appendChild(card)})}
@@ -659,8 +673,11 @@ init();
 </script>
 <script type="module">
 import './src/browser/extension-client.js';
-import {parseNexBrowserCommand} from './src/browser/command-parser.js';
+import {parseNexBrowserCommand,parseNexBrowserPlan} from './src/browser/command-parser.js';
+import {parseNexCodingCommand} from './src/agent/coding-command-parser.js';
 window.nexParseBrowserCommand = parseNexBrowserCommand;
+window.nexParseBrowserPlan = parseNexBrowserPlan;
+window.nexParseCodingCommand = parseNexCodingCommand;
 import { NexCore } from './src/index.js';
 import {buildProjectPreview} from './src/engines/project-preview.js';
 import {generateLocalReply, LOCAL_MODEL, getLocalLLMInfo} from './src/local-llm.js';
